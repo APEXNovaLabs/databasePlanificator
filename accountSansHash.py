@@ -3,8 +3,8 @@ from mysql.connector import Error
 
 # Configuration de la connexion à la base de données
 config = {
-    'user': 'root',          # Remplacez par votre utilisateur MySQL
-    'password': 'password',  # Remplacez par votre mot de passe MySQL
+    'user': 'sudoted',          # Remplacez par votre utilisateur MySQL
+    'password': '100805Josh',  # Remplacez par votre mot de passe MySQL
     'host': 'localhost',     # Remplacez par l'hôte de votre base de données
     'database': 'Planificator',  # Nom de la base de données
     'raise_on_warnings': True

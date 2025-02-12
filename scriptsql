@@ -1,7 +1,7 @@
 CREATE DATABASE Planificator;
 USE Planificator;
 CREATE TABLE Account (
-    id INT AUTO_INCREMENT PRIMARY KEY,  -- Identifiant unique pour chaque compte
+    id_compte INT AUTO_INCREMENT PRIMARY KEY,  -- Identifiant unique pour chaque compte
     nom VARCHAR(70) NOT NULL,           -- Nom de l'utilisateur
     prenom VARCHAR(70) NOT NULL,        -- Prénom de l'utilisateur
     email VARCHAR(100) NOT NULL UNIQUE,

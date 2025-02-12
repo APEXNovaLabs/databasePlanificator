@@ -86,7 +86,7 @@ def lecture_compte(conn):
         if accounts:  # Vérifier si la liste des comptes n'est pas vide
             print("\nListe des comptes :")
             for account in accounts:
-                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Type: {account[5]}")
+                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Date de compte: {account[4]}, Type: {account[5]}")
         else:
             print("\nAucun compte trouvé dans la base de données.")
 

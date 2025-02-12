@@ -121,7 +121,7 @@ def update_compte(conn):
             params.append(password)
 
         if updates:
-            query = f"UPDATE Account SET {', '.join(updates)} WHERE id = %s"
+            query = f"UPDATE Account SET {', '.join(updates)} WHERE id_compte = %s"
             params.append(account_id)
             cursor.execute(query, tuple(params))
             conn.commit()
@@ -144,7 +144,7 @@ def suppression_compte(conn):
         admin_db_password_hashed_bytes = admin_db_password_hashed.encode('utf-8')
 
         if bcrypt.checkpw(admin_password.encode('utf-8'), admin_db_password_hashed_bytes):
-            cursor.execute("DELETE FROM Account WHERE id = %s", (account_id,))
+            cursor.execute("DELETE FROM Account WHERE id_compte = %s", (account_id,))
             conn.commit()
             print("Compte supprimé avec succès !")
         else:

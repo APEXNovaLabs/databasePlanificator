@@ -1,23 +1,33 @@
 import mysql.connector
 from mysql.connector import Error
 
-# Configuration de la connexion à la base de données
-config = {
-    'user': 'sudoted',          # Remplacez par votre utilisateur MySQL
-    'password': '100805Josh',  # Remplacez par votre mot de passe MySQL
-    'host': 'localhost',     # Remplacez par l'hôte de votre base de données
-    'database': 'Planificator',  # Nom de la base de données
-    'raise_on_warnings': True
-}
-
 # Fonction pour établir une connexion à la base de données
 def connect():
-    try:
-        conn = mysql.connector.connect(**config)
-        return conn
-    except Error as e:
-        print(f"Erreur de connexion à la base de données : {e}")
-        return None
+    while True:
+        try:
+            user = input("Nom d'utilisateur MySQL : ")
+            password = input("Mot de passe MySQL : ")
+            host = input("Hôte MySQL (laissez vide pour localhost) : ") or "localhost"
+            database = input("Nom de la base de données : ")
+
+            config = {
+                'user': user,
+                'password': password,
+                'host': host,
+                'database': database,
+                'raise_on_warnings': True
+            }
+
+            conn = mysql.connector.connect(**config)
+            print("Connexion à la base de données réussie !")
+            return conn
+
+        except Error as e:
+            print(f"Erreur de connexion à la base de données : {e}")
+            retry = input("Voulez-vous réessayer ? (oui/non) : ").lower()
+            if retry != 'oui':
+                return None
+
 
 # Fonction pour vérifier si le mot de passe correspond aux informations personnelles
 def password_is_personal_info(nom, prenom, password):

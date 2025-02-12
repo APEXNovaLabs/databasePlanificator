@@ -2,23 +2,32 @@ import bcrypt
 import mysql.connector
 from mysql.connector import Error
 
-# Configuration de la connexion à la base de données
-config = {
-    'user': 'root',          # Remplacez par votre utilisateur MySQL
-    'password': 'password',  # Remplacez par votre mot de passe MySQL
-    'host': 'localhost',     # Remplacez par l'hôte de votre base de données
-    'database': 'Planificator',  # Nom de la base de données
-    'raise_on_warnings': True
-}
-
 # Fonction pour établir une connexion à la base de données
 def connect():
-    try:
-        conn = mysql.connector.connect(**config)
-        return conn
-    except Error as e:
-        print(f"Erreur de connexion à la base de données : {e}")
-        return None
+    while True:
+        try:
+            user = input("Nom d'utilisateur MySQL : ")
+            password = input("Mot de passe MySQL : ")
+            host = input("Hôte MySQL (laissez vide pour localhost) : ") or "localhost"
+            database = input("Nom de la base de données : ")
+
+            config = {
+                'user': user,
+                'password': password,
+                'host': host,
+                'database': database,
+                'raise_on_warnings': True
+            }
+
+            conn = mysql.connector.connect(**config)
+            print("Connexion à la base de données réussie !")
+            return conn
+
+        except Error as e:
+            print(f"Erreur de connexion à la base de données : {e}")
+            retry = input("Voulez-vous réessayer ? (oui/non) : ").lower()
+            if retry != 'oui':
+                return None
 
 # Fonction pour vérifier si le mot de passe correspond aux informations personnelles
 def password_is_personal_info(nom, prenom, password):
@@ -48,7 +57,7 @@ def get_valid_password(nom, prenom):
             return hash_password(password)  # Hacher le mot de passe avant de le retourner
 
 # Fonction pour créer un compte
-def create_account(conn):
+def creation_compte(conn):
     nom = input("Entrez le nom : ")
     prenom = input("Entrez le prénom : ")
     email = input("Entrez l'email : ")
@@ -67,21 +76,25 @@ def create_account(conn):
     except Error as e:
         print(f"Erreur lors de la création du compte : {e}")
 
-# Fonction pour lire les comptes
-def read_accounts(conn):
+# Pour voir les comptes existants
+def lecture_compte(conn):
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Account")
         accounts = cursor.fetchall()
 
-        print("\nListe des comptes :")
-        for account in accounts:
-            print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Type: {account[5]}")
+        if accounts:  # Vérifier si la liste des comptes n'est pas vide
+            print("\nListe des comptes :")
+            for account in accounts:
+                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Type: {account[5]}")
+        else:
+            print("\nAucun compte trouvé dans la base de données.")
+
     except Error as e:
         print(f"Erreur lors de la lecture des comptes : {e}")
 
 # Fonction pour mettre à jour un compte
-def update_account(conn):
+def update_compte(conn):
     account_id = input("Entrez l'ID du compte à mettre à jour : ")
     nom = input("Entrez le nouveau nom (laissez vide pour ne pas modifier) : ")
     prenom = input("Entrez le nouveau prénom (laissez vide pour ne pas modifier) : ")
@@ -118,17 +131,19 @@ def update_account(conn):
     except Error as e:
         print(f"Erreur lors de la mise à jour du compte : {e}")
 
-# Fonction pour supprimer un compte (réservé à l'administrateur)
-def delete_account(conn):
+def suppression_compte(conn):
     account_id = input("Entrez l'ID du compte à supprimer : ")
     admin_password = input("Entrez le mot de passe administrateur pour confirmer : ")
 
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT password FROM Account WHERE type_compte = 'Administrateur'")
-        admin_db_password = cursor.fetchone()[0]
+        admin_db_password_hashed = cursor.fetchone()[0]
 
-        if admin_password == admin_db_password:
+        # Convertir le mot de passe haché de la base de données en bytes
+        admin_db_password_hashed_bytes = admin_db_password_hashed.encode('utf-8')
+
+        if bcrypt.checkpw(admin_password.encode('utf-8'), admin_db_password_hashed_bytes):
             cursor.execute("DELETE FROM Account WHERE id = %s", (account_id,))
             conn.commit()
             print("Compte supprimé avec succès !")
@@ -153,13 +168,13 @@ def main():
         choice = input("Choisissez une option : ")
 
         if choice == '1':
-            create_account(conn)
+            creation_compte(conn)
         elif choice == '2':
-            read_accounts(conn)
+            lecture_compte(conn)
         elif choice == '3':
-            update_account(conn)
+            update_compte(conn)
         elif choice == '4':
-            delete_account(conn)
+            suppression_compte(conn)
         elif choice == '5':
             break
         else:

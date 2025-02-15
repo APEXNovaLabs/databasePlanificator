@@ -1,10 +1,14 @@
+-- Création de la DB
 CREATE DATABASE Planificator;
 USE Planificator;
+
+-- Table Compte
 CREATE TABLE Account (
     id_compte INT AUTO_INCREMENT PRIMARY KEY,  -- Identifiant unique pour chaque compte
-    nom VARCHAR(70) NOT NULL,           -- Nom de l'utilisateur
-    prenom VARCHAR(70) NOT NULL,        -- Prénom de l'utilisateur
+    nom VARCHAR(70) NOT NULL,           
+    prenom VARCHAR(70) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
+    username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     type_compte ENUM('Administrateur', 'Utilisateur') NOT NULL,  -- Type de compte
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Date de création du compte
@@ -86,3 +90,7 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+-- Supprimer complètement la base de données
+DROP DATABASE Planificator;

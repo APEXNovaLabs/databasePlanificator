@@ -30,8 +30,8 @@ def connect():
                 return None
 
 # Fonction pour vérifier si le mot de passe correspond aux informations personnelles
-def password_is_personal_info(nom, prenom, password):
-    return nom.lower() in password.lower() or prenom.lower() in password.lower()
+def password_is_personal_info(nom, prenom, username, password):
+    return nom.lower() in password.lower() or prenom.lower() in password.lower() or username.lower() in password.lower()
 
 # Fonction pour hacher le mot de passe avec bcrypt
 def hash_password(password):
@@ -42,7 +42,7 @@ def hash_password(password):
     return hashed_password
 
 # Fonction pour demander un mot de passe valide (modifiée pour utiliser le hachage)
-def get_valid_password(nom, prenom):
+def get_valid_password(nom, prenom, username):
     while True:
         password = input("Entrez votre nouveau mot de passe : ")
         confirm_password = input("Confirmez votre nouveau mot de passe : ")
@@ -51,8 +51,8 @@ def get_valid_password(nom, prenom):
             print("Les mots de passe ne correspondent pas. Veuillez réessayer.")
         elif len(password) < 8:
             print("Le mot de passe doit contenir au moins 8 caractères.")
-        elif password_is_personal_info(nom, prenom, password):
-            print("Le mot de passe ne doit pas contenir votre nom ou prénom. Veuillez réessayer.")
+        elif password_is_personal_info(nom, prenom, username, password):
+            print("Le mot de passe ne doit pas contenir votre nom ou prénom ou même votre nom d'utilisateur. Veuillez réessayer.")
         else:
             return hash_password(password)  # Hacher le mot de passe avant de le retourner
 
@@ -63,13 +63,13 @@ def creation_compte(conn):
     email = input("Entrez l'email : ")
     username = input("Entrez votre nom d'utilisateur : ")
     type_compte = input("Entrez le type de compte (Administrateur/Utilisateur) : ")
-    password = get_valid_password(nom, prenom)  # Le mot de passe est déjà haché
+    password = get_valid_password(nom, prenom, username)  # Le mot de passe est déjà haché
 
     try:
         cursor = conn.cursor()
         query = """
-        INSERT INTO Account (nom, prenom, email, username,password, type_compte)
-        VALUES (%s, %s, %s,%s, %s, %s)
+        INSERT INTO Account (nom, prenom, email, username, password, type_compte)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (nom, prenom, email, username, password, type_compte))
         conn.commit()
@@ -87,7 +87,7 @@ def lecture_compte(conn):
         if accounts:  # Vérifier si la liste des comptes n'est pas vide
             print("\nListe des comptes :")
             for account in accounts:
-                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Username: {account[4]},Type: {account[6]}, Date de compte: {account[7]}")
+                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Username: {account[4]}, Type: {account[6]}, Date de compte: {account[7]}")
         else:
             print("\nAucun compte trouvé dans la base de données.")
 
@@ -121,7 +121,7 @@ def update_compte(conn):
             updates.append("username = %s")
             params.append(username)
         if password:
-            password = get_valid_password(nom if nom else "", prenom if prenom else "")
+            password = get_valid_password(nom if nom else "", prenom if prenom else "", username if username else "")
             updates.append("password = %s")
             params.append(password)
 

@@ -61,16 +61,17 @@ def creation_compte(conn):
     nom = input("Entrez le nom : ")
     prenom = input("Entrez le prénom : ")
     email = input("Entrez l'email : ")
+    username = input("Entrez votre nom d'utilisateur : ")
     type_compte = input("Entrez le type de compte (Administrateur/Utilisateur) : ")
     password = get_valid_password(nom, prenom)  # Le mot de passe est déjà haché
 
     try:
         cursor = conn.cursor()
         query = """
-        INSERT INTO Account (nom, prenom, email, password, type_compte)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO Account (nom, prenom, email, username,password, type_compte)
+        VALUES (%s, %s, %s,%s, %s, %s)
         """
-        cursor.execute(query, (nom, prenom, email, password, type_compte))
+        cursor.execute(query, (nom, prenom, email, username, password, type_compte))
         conn.commit()
         print("Compte créé avec succès !")
     except Error as e:
@@ -86,7 +87,7 @@ def lecture_compte(conn):
         if accounts:  # Vérifier si la liste des comptes n'est pas vide
             print("\nListe des comptes :")
             for account in accounts:
-                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Type: {account[5]}, Date de compte: {account[6]}")
+                print(f"ID: {account[0]}, Nom: {account[1]}, Prénom: {account[2]}, Email: {account[3]}, Username: {account[4]},Type: {account[6]}, Date de compte: {account[7]}")
         else:
             print("\nAucun compte trouvé dans la base de données.")
 
@@ -99,6 +100,7 @@ def update_compte(conn):
     nom = input("Entrez le nouveau nom (laissez vide pour ne pas modifier) : ")
     prenom = input("Entrez le nouveau prénom (laissez vide pour ne pas modifier) : ")
     email = input("Entrez le nouvel email (laissez vide pour ne pas modifier) : ")
+    username = input("Entrer le nouveau nom d'utilisateur (laissez vide pour ne pas modifier) : ")
     password = input("Entrez le nouveau mot de passe (laissez vide pour ne pas modifier) : ")
 
     try:
@@ -115,6 +117,9 @@ def update_compte(conn):
         if email:
             updates.append("email = %s")
             params.append(email)
+        if username:
+            updates.append("username = %s")
+            params.append(username)
         if password:
             password = get_valid_password(nom if nom else "", prenom if prenom else "")
             updates.append("password = %s")

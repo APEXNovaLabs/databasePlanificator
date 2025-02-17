@@ -1,4 +1,5 @@
 import bcrypt
+import re
 import mysql.connector
 from mysql.connector import Error
 
@@ -56,10 +57,22 @@ def get_valid_password(nom, prenom, username):
         else:
             return hash_password(password)  # Hacher le mot de passe avant de le retourner
 
-# Fonction pour créer un compte
+def is_valid_email(email):
+    # Expression régulière pour vérifier le format de l'e-mail
+    email_regex = r"[^@]+@[^@]+\.[^@]+"
+    return re.match(email_regex, email) is not None
+
+# Fonction pour créer un compte (modifiée pour inclure la vérification de l'e-mail)
 def creation_compte(conn):
     nom = input("Entrez le nom : ")
     prenom = input("Entrez le prénom : ")
+    while True:
+        email = input("Entrez l'email : ")
+        if not is_valid_email(email):
+            print("L'adresse e-mail n'est pas valide. Veuillez réessayer.")
+        else:
+            break
+    username = input("Entrez votre nom d'utilisateur : ")
     email = input("Entrez l'email : ")
     username = input("Entrez votre nom d'utilisateur : ")
     type_compte = input("Entrez le type de compte (Administrateur/Utilisateur) : ")

@@ -5,7 +5,7 @@ USE Planificator;
 -- Table Compte
 CREATE TABLE Account (
     id_compte INT AUTO_INCREMENT PRIMARY KEY,  -- Identifiant unique pour chaque compte
-    nom VARCHAR(70) NOT NULL,           
+    nom VARCHAR(70) NOT NULL,
     prenom VARCHAR(70) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -91,6 +91,91 @@ END$$
 
 DELIMITER ;
 
+-- Table Client
+CREATE TABLE Client (
+    client_id INT PRIMARY KEY AUTO_INCREMENT,
+    nom VARCHAR(255) NOT NULL,
+    prenom VARCHAR(255),
+    email VARCHAR(255) NOT NULL,
+    telephone VARCHAR(20) NOT NULL,
+    adresse VARCHAR(255) NOT NULL,
+    date_ajout DATE NOT NULL,
+    categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
+    axe VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Contrat (
+    contrat_id INT PRIMARY KEY AUTO_INCREMENT,
+    client_id INT NOT NULL,
+    date_contrat DATE NOT NULL,
+    date_debut DATE NOT NULL,
+    date_fin DATE NOT NULL,
+    categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES Client(client_id)
+);
+
+-- Dans le code, lors de l'ajout du contrat:
+SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+
+
+-- Table Traitement (modification)
+CREATE TABLE Traitement (
+    traitement_id INT PRIMARY KEY AUTO_INCREMENT,
+    contrat_id INT NOT NULL,
+    type_traitement VARCHAR(255) NOT NULL,
+    FOREIGN KEY (contrat_id) REFERENCES Contrat(contrat_id) ON DELETE CASCADE
+);
+
+-- Table Planning (modification)
+CREATE TABLE Planning (
+    planning_id INT PRIMARY KEY AUTO_INCREMENT,
+    traitement_id INT NOT NULL,
+    mois_debut VARCHAR(20) NOT NULL,
+    mois_fin VARCHAR(20) NOT NULL,
+    type_traitement VARCHAR(255) NOT NULL,
+    mois_pause VARCHAR(20),
+    redondance ENUM ('Mensuel', 'Hebdo') NOT NULL,
+    FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+);
+
+-- Table Facture (modification)
+CREATE TABLE Facture (
+    facture_id INT PRIMARY KEY AUTO_INCREMENT,
+    traitement_id INT NOT NULL,
+    montant INT NOT NULL,
+    date_traitement DATE NOT NULL,
+    axe VARCHAR(255) NOT NULL,
+    remarque TEXT,
+    FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+);
+
+-- Table Historique (modification)
+CREATE TABLE Historique (
+    historique_id INT PRIMARY KEY AUTO_INCREMENT,
+    facture_id INT NOT NULL,
+    date_historique TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    contenu TEXT NOT NULL,
+    FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
+);
+
+-- Table Avancement (modification)
+CREATE TABLE Avancement (
+    avancement_id INT PRIMARY KEY AUTO_INCREMENT,
+    traitement_id INT NOT NULL,
+    motif TEXT NOT NULL,
+    type ENUM ('Avancement', 'Décalage') NOT NULL,
+    FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+);
+
+
+-- Effacer une table dans Planificator
+DROP TABLE Account;
+DROP TABLE Contrat;
+DROP TABLE Traitement;
+DROP TABLE Client;
+DROP TABLE Facture;
+DROP TABLE Historique;
+DROP TABLE Avancement;
 
 -- Supprimer complètement la base de données
 DROP DATABASE Planificator;

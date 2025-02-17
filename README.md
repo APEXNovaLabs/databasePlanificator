@@ -7,6 +7,6 @@
 ## Autres
 
 - Projet **[Planificator]()**
-- Contributeurs du projet:
-  - [zah ihany](https://github.com/josoavj)
-  - [de lery](https://github.com/AinaMaminirina18)
+- Contributeur du projet:
+  - Pour la base de données: [josoavj](https://github.com/josoavj)
+  - Pour l'interface: [Aina Maminirina](https://github.com/AinaMaminirina18)

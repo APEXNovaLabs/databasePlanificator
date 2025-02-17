@@ -62,7 +62,6 @@ def is_valid_email(email):
     email_regex = r"[^@]+@[^@]+\.[^@]+"
     return re.match(email_regex, email) is not None
 
-# Fonction pour créer un compte (modifiée pour inclure la vérification de l'e-mail)
 def creation_compte(conn):
     nom = input("Entrez le nom : ")
     prenom = input("Entrez le prénom : ")
@@ -72,8 +71,6 @@ def creation_compte(conn):
             print("L'adresse e-mail n'est pas valide. Veuillez réessayer.")
         else:
             break
-    username = input("Entrez votre nom d'utilisateur : ")
-    email = input("Entrez l'email : ")
     username = input("Entrez votre nom d'utilisateur : ")
     type_compte = input("Entrez le type de compte (Administrateur/Utilisateur) : ")
     password = get_valid_password(nom, prenom, username)  # Le mot de passe est déjà haché
@@ -112,7 +109,14 @@ def update_compte(conn):
     account_id = input("Entrez l'ID du compte à mettre à jour : ")
     nom = input("Entrez le nouveau nom (laissez vide pour ne pas modifier) : ")
     prenom = input("Entrez le nouveau prénom (laissez vide pour ne pas modifier) : ")
-    email = input("Entrez le nouvel email (laissez vide pour ne pas modifier) : ")
+    while True:
+        email = input("Entrez le nouvel email (laissez vide pour ne pas modifier) : ")
+        if email == "":  # Si l'utilisateur ne veut pas modifier l'email
+            break
+        if not is_valid_email(email):
+            print("L'adresse e-mail n'est pas valide. Veuillez réessayer.")
+        else:
+            break
     username = input("Entrer le nouveau nom d'utilisateur (laissez vide pour ne pas modifier) : ")
     password = input("Entrez le nouveau mot de passe (laissez vide pour ne pas modifier) : ")
 

@@ -53,12 +53,15 @@ async def delete_contrat(pool, contrat_id):
             await conn.commit()
 
 # Pour la table traitement
-async def creation_traitement(pool, contrat_id, type_traitement):
+types_traitement_valides = ["Dératisation", "Désinfection", "Désinsectisation", "Nettoyage"]
+
+async def creation_traitement(pool, contrat_id, id_type_traitement):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Traitement (contrat_id, type_traitement) VALUES (%s, %s)", (contrat_id, type_traitement))
+            await cur.execute("INSERT INTO Traitement (contrat_id, id_type_traitement) VALUES (%s, %s)", (contrat_id, id_type_traitement))
             await conn.commit()
             return cur.lastrowid
+
 
 async def read_traitement(pool, traitement_id):
     async with pool.acquire() as conn:
@@ -79,10 +82,10 @@ async def delete_traitement(pool, traitement_id):
             await conn.commit()
 
 # Pour le planning
-async def create_planning(pool, traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance):
+async def create_planning(pool, traitement_id, mois_debut, mois_fin, mois_pause, redondance): # type_traitement supprimé
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Planning (traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance) VALUES (%s, %s, %s, %s, %s, %s)", (traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance))
+            await cur.execute("INSERT INTO Planning (traitement_id, mois_debut, mois_fin, mois_pause, redondance) VALUES (%s, %s, %s, %s, %s)", (traitement_id, mois_debut, mois_fin, mois_pause, redondance)) # type_traitement supprimé
             await conn.commit()
             return cur.lastrowid
 
@@ -227,12 +230,13 @@ async def main():
         print("4. Planning")
         print("5. Facture")
         print("6. Historique")
-        print("7. Quitter")
-        print("8. Avancement")
+        print("7. Avancement")
+        print("8. Quitter")
 
-        choix_table = input("Choisissez une table (1-7) : ")
 
-        if choix_table == '7':
+        choix_table = input("Choisissez une table (1-8) : ")
+
+        if choix_table == '8':
             break
 
         table_functions = {
@@ -248,7 +252,7 @@ async def main():
                   'name': "Facture"},
             '6': {'create': create_historique, 'read': read_historique, 'update': update_historique,
                   'delete': delete_historique, 'name': "Historique"},
-            '8': {'create': create_avancement, 'read': read_avancement, 'update': update_avancement,
+            '7': {'create': create_avancement, 'read': read_avancement, 'update': update_avancement,
                   'delete': delete_avancement, 'name': "Avancement"},
         }
 
@@ -362,10 +366,9 @@ async def main():
                         traitement_id = int(input("Nouveau ID du traitement : "))
                         mois_debut = input("Nouveau mois de début : ")
                         mois_fin = input("Nouveau mois de fin : ")
-                        type_traitement = input("Nouveau type de traitement : ")
                         mois_pause = input("Nouveau mois de pause (facultatif) : ")
                         redondance = input("Nouvelle redondance (Mensuel/Hebdo) : ")
-                        await func(pool, id_a_modifier, traitement_id, mois_debut, mois_fin, type_traitement,
+                        await func(pool, id_a_modifier, traitement_id, mois_debut, mois_fin,
                                    mois_pause, redondance)
                     elif table_name == "Facture":
                             traitement_id = int(input("Nouveau ID du traitement : "))

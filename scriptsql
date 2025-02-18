@@ -117,14 +117,30 @@ CREATE TABLE Contrat (
 -- Dans le code, lors de l'ajout du contrat:
 SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
 
+-- Table TypeTraitement
+CREATE TABLE TypeTraitement (
+    id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
+    nom_type_traitement VARCHAR(255) UNIQUE NOT NULL
+);
 
--- Table Traitement (modification)
+-- Insertion des types de traitement prédéfinis
+INSERT INTO TypeTraitement (nom_type_traitement) VALUES
+('Dératisation'),
+('Désinfection'),
+('Désinsectisation'),
+('Nettoyage');
+
+
+
+-- Table Traitement
 CREATE TABLE Traitement (
     traitement_id INT PRIMARY KEY AUTO_INCREMENT,
     contrat_id INT NOT NULL,
-    type_traitement VARCHAR(255) NOT NULL,
-    FOREIGN KEY (contrat_id) REFERENCES Contrat(contrat_id) ON DELETE CASCADE
+    id_type_traitement INT NOT NULL,  -- Clé étrangère vers TypeTraitement
+    FOREIGN KEY (contrat_id) REFERENCES Contrat(contrat_id) ON DELETE CASCADE,
+    FOREIGN KEY (id_type_traitement) REFERENCES TypeTraitement(id_type_traitement) ON DELETE CASCADE -- Ajout de la contrainte pour la clé étrangère
 );
+
 
 -- Table Planning (modification)
 CREATE TABLE Planning (
@@ -132,11 +148,11 @@ CREATE TABLE Planning (
     traitement_id INT NOT NULL,
     mois_debut VARCHAR(20) NOT NULL,
     mois_fin VARCHAR(20) NOT NULL,
-    type_traitement VARCHAR(255) NOT NULL,
     mois_pause VARCHAR(20),
     redondance ENUM ('Mensuel', 'Hebdo') NOT NULL,
     FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
+
 
 -- Table Facture (modification)
 CREATE TABLE Facture (

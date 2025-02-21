@@ -2,7 +2,8 @@
 
 - **Description:** Script pour les bases de données du projet Planificator
 - **DB:** mysql
-- **Langage pour les cripts:** Python
+- **Langage pour les scripts:** Python
+- **Extension utilisés:** aiomysql, mysqlconnector, bycript, re
 
 ## Autres
 

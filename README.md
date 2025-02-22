@@ -7,7 +7,8 @@
 
 ## Autres
 
-- Projet **[Planificator]()**
+- Projet **[Planificator](https://github.com/AinaMaminirina18/Planificator)**
 - Contributeur du projet:
   - Pour la base de données: [josoavj](https://github.com/josoavj)
   - Pour l'interface: [Aina Maminirina](https://github.com/AinaMaminirina18)
+- Final Version: [Planificator 1.0]()

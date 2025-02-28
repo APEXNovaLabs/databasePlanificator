@@ -1,3 +1,16 @@
+-- Effacer une table dans Planificator
+DROP TABLE Account;
+DROP TABLE Contrat;
+DROP TABLE Traitement;
+DROP TypeTraitement;
+DROP TABLE Client;
+DROP TABLE Facture;
+DROP TABLE Historique;
+DROP TABLE Avancement;
+
+-- Supprimer complètement la base de données
+DROP DATABASE Planificator;
+
 -- Création de la DB
 CREATE DATABASE Planificator;
 USE Planificator;
@@ -183,15 +196,3 @@ CREATE TABLE Avancement (
     FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
-
--- Effacer une table dans Planificator
-DROP TABLE Account;
-DROP TABLE Contrat;
-DROP TABLE Traitement;
-DROP TABLE Client;
-DROP TABLE Facture;
-DROP TABLE Historique;
-DROP TABLE Avancement;
-
--- Supprimer complètement la base de données
-DROP DATABASE Planificator;

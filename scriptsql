@@ -2,7 +2,7 @@
 DROP TABLE Account;
 DROP TABLE Contrat;
 DROP TABLE Traitement;
-DROP TypeTraitement;
+DROP TABLE TypeTraitement;
 DROP TABLE Client;
 DROP TABLE Facture;
 DROP TABLE Historique;

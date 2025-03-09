@@ -1,0 +1,11 @@
+fonction generer_planifications(traitement_id, date_debut, date_fin, redondance):
+    si redondance est Mensuel:
+        date_courante = date_debut
+        tant que date_courante <= date_fin:
+            insérer dans PlanificationMensuelle (traitement_id, date_courante)
+            date_courante = ajouter 1 mois à date_courante
+    sinon si redondance est Hebdomadaire:
+        date_courante = date_debut
+        tant que date_courante <= date_fin:
+            insérer dans PlanificationHebdomadaire (traitement_id, date_courante)
+            date_courante = ajouter 1 semaine à date_courante

@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS Historique;
 DROP TABLE IF EXISTS Avancement;
 DROP TABLE IF EXISTS Remarque;
 
+
 -- Supprimer complètement la base de données
 DROP DATABASE IF EXISTS Planificator;
 
@@ -156,7 +157,7 @@ CREATE TABLE Traitement (
 );
 
 
--- Table Planning (modification)
+-- Table Planning 
 CREATE TABLE Planning (
                           planning_id INT PRIMARY KEY AUTO_INCREMENT,
                           traitement_id INT NOT NULL,
@@ -168,7 +169,7 @@ CREATE TABLE Planning (
 );
 
 
--- Table Facture (modification)
+-- Table Facture 
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          traitement_id INT NOT NULL,
@@ -191,7 +192,7 @@ CREATE TABLE Remarque (
 );
 
 
--- Table Historique (modification)
+-- Table Historique 
 CREATE TABLE Historique (
                             historique_id INT PRIMARY KEY AUTO_INCREMENT,
                             facture_id INT NOT NULL,
@@ -200,7 +201,7 @@ CREATE TABLE Historique (
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
 );
 
--- Table Avancement (modification)
+-- Table Avancement
 CREATE TABLE Avancement (
                             avancement_id INT PRIMARY KEY AUTO_INCREMENT,
                             traitement_id INT NOT NULL,

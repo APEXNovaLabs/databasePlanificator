@@ -145,7 +145,8 @@ INSERT INTO TypeTraitement (nom_type_traitement) VALUES
                                                      ('Dératisation'),
                                                      ('Désinfection'),
                                                      ('Désinsectisation'),
-                                                     ('Nettoyage');
+                                                     ('Fumigation'),
+                                                     ('Nettoyage industriel');
 
 
 

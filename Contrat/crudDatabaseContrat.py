@@ -546,13 +546,14 @@ async def main():
                         else:
                             print("Aucun traitement trouvé pour ce contrat.")
 
+
                     elif table_name == "Historique":
                         facture_id = int(input("ID de la facture : "))
                         contenu = input("Contenu : ")
                         result = await func(pool, facture_id, contenu)
 
-                    print(f"{table_name} créé avec l'ID : {result}")
-
+                        print(f"{table_name} créé avec l'ID : {result}")
+                        
                 elif operation == 'read':
                     id_a_lire = int(input(f"ID du {table_name} à lire : "))
                     result = await func(pool, id_a_lire)

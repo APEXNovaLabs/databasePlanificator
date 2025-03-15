@@ -310,20 +310,33 @@ async def main():
                 if operation == 'create':
                     if table_name == "Client":
                         nom = input("Nom : ")
-                        prenom = input("Prénom (facultatif) : ")
-                        email = input("Email : ")
-                        telephone = input("Téléphone : ")
-                        adresse = input("Adresse : ")
                         if categories:
                             print("Catégories disponibles:")
                             for i, categorie in enumerate(categories):
                                 print(f"{i + 1}. {categorie}")
 
-                            choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
-                            categorie_choisie = categories[choix]
+                            while True:
+                                try:
+                                    choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
+                                    if 0 <= choix < len(categories):
+                                        categorie_choisie = categories[choix]
+                                        break  # Sortir de la boucle si le choix est valide
+                                    else:
+                                        print("Choix invalide. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un numéro.")
                         else:
                             print("Aucune catégorie trouvée.")
                             categorie_choisie = input("Entrez la catégorie manuellement : ")
+
+                        if categorie_choisie == "Particulier":
+                            prenom = input("Prénom (facultatif) : ")
+                        else:
+                            prenom = input("Responsable : ")
+
+                        email = input("Email : ")
+                        telephone = input("Téléphone : ")
+                        adresse = input("Adresse : ")
                         axe = input("Axe : ")
                         result = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
 

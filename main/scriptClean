@@ -136,8 +136,8 @@ SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
 
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (
-    id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
-    typeTraitement ENUM('Dératisation', 'Désinfection', 'Désinsectisation', 'Fumigation', 'Nettoyage industriel') NOT NULL
+                                id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
+                                typeTraitement ENUM('Dératisation', 'Désinfection', 'Désinsectisation', 'Fumigation', 'Nettoyage industriel') NOT NULL
 );
 
 
@@ -159,30 +159,40 @@ CREATE TABLE Planning (
                           mois_fin VARCHAR(20) NOT NULL,
                           mois_pause VARCHAR(20),
                           redondance ENUM ('Mensuel', 'Hebdomadaire', '2 mois', '3 mois', '4 mois', '6 mois') NOT NULL,
+                          date_fin_planification DATE,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
+-- Table PlanningDetails
+CREATE TABLE PlanningDetails (
+                                 planning_detail_id INT PRIMARY KEY AUTO_INCREMENT,
+                                 planning_id INT NOT NULL,
+                                 date_planification DATE NOT NULL,
+                                 statut ENUM ('Effectué', 'À venir') NOT NULL,
+                                 element_planification VARCHAR(20) NOT NULL,
+                                 FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
+);
 
 -- Table Facture
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
-                         traitement_id INT NOT NULL,
+                         planning_detail_id INT NOT NULL,
                          montant INT NOT NULL,
                          date_traitement DATE NOT NULL,
                          axe VARCHAR(255) NOT NULL,
                          remarque TEXT,
-                         FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+                         FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 
 -- Table Remarque
 CREATE TABLE Remarque (
                           remarque_id INT PRIMARY KEY AUTO_INCREMENT,
                           client_id INT NOT NULL,
-                          traitement_id INT NOT NULL,
+                          planning_detail_id INT NOT NULL,
                           contenu TEXT NOT NULL,
                           date_remarque TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                           FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE,
-                          FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 
 
@@ -198,8 +208,8 @@ CREATE TABLE Historique (
 -- Table Avancement
 CREATE TABLE Avancement (
                             avancement_id INT PRIMARY KEY AUTO_INCREMENT,
-                            traitement_id INT NOT NULL,
+                            planning_detail_id INT NOT NULL,
                             motif TEXT NOT NULL,
                             type ENUM ('Avancement', 'Décalage') NOT NULL,
-                            FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+                            FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );

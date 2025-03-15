@@ -116,3 +116,20 @@ async def main():
                 contenu = input("Nouveau contenu: ")
                 date_traitement_str = input("Nouvelle date du traitement (AAAA-MM-JJ): ")
                 date_traitement = datetime.strptime(date_traitement_str, "%Y-%m-%d").date()
+
+    except aiomysql.OperationalError as e:
+        print(f"Erreur de connexion à la base de données: {e}")
+    except aiomysql.IntegrityError as e:
+        print(f"Violation de contrainte d'intégrité: {e}")
+    except ValueError as e:
+        print(f"Erreur de valeur: {e}")
+    except Exception as e:
+        print(f"Erreur inattendue: {e}")
+
+    finally:
+        if pool:
+            pool.close()
+            await pool.wait_closed()
+
+if __name__ == "__main__":
+    asyncio.run(main())

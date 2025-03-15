@@ -125,7 +125,7 @@ CREATE TABLE Contrat (
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin DATE NOT NULL,
-                         duree ENUM ('2 mois', '3 mois', '4 mois', '6 mois', '12 mois') NOT NULL,
+                         duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
 );
@@ -139,7 +139,6 @@ CREATE TABLE TypeTraitement (
                                 id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
                                 nom_type_traitement VARCHAR(255) UNIQUE NOT NULL
 );
-
 -- Insertion des types de traitement prédéfinis
 INSERT INTO TypeTraitement (nom_type_traitement) VALUES
                                                      ('Dératisation'),
@@ -148,6 +147,11 @@ INSERT INTO TypeTraitement (nom_type_traitement) VALUES
                                                      ('Fumigation'),
                                                      ('Nettoyage industriel');
 
+-- Type de traitement utilisant enum
+CREATE TABLE TypeTraitement (
+    id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
+    typeTraitement ENUM('Dératisation', 'Désinfection', 'Désinsectisation', 'Fumigation', 'Nettoyage industriel') NOT NULL
+);
 
 
 -- Table Traitement
@@ -160,19 +164,19 @@ CREATE TABLE Traitement (
 );
 
 
--- Table Planning 
+-- Table Planning
 CREATE TABLE Planning (
                           planning_id INT PRIMARY KEY AUTO_INCREMENT,
                           traitement_id INT NOT NULL,
                           mois_debut VARCHAR(20) NOT NULL,
                           mois_fin VARCHAR(20) NOT NULL,
                           mois_pause VARCHAR(20),
-                          redondance ENUM ('Mensuel', 'Hebdo') NOT NULL,
+                          redondance ENUM ('Mensuel', 'Hebdomadaire', '2 mois', '3 mois', '4 mois', '6 mois') NOT NULL,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
 
--- Table Facture 
+-- Table Facture
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          traitement_id INT NOT NULL,
@@ -185,17 +189,17 @@ CREATE TABLE Facture (
 
 -- Table Remarque
 CREATE TABLE Remarque (
-    remarque_id INT PRIMARY KEY AUTO_INCREMENT,
-    client_id INT NOT NULL,
-    traitement_id INT NOT NULL,
-    contenu TEXT NOT NULL,
-    date_remarque TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE,
-    FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
+                          remarque_id INT PRIMARY KEY AUTO_INCREMENT,
+                          client_id INT NOT NULL,
+                          traitement_id INT NOT NULL,
+                          contenu TEXT NOT NULL,
+                          date_remarque TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE,
+                          FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
 
--- Table Historique 
+-- Table Historique
 CREATE TABLE Historique (
                             historique_id INT PRIMARY KEY AUTO_INCREMENT,
                             facture_id INT NOT NULL,

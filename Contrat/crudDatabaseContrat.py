@@ -463,23 +463,28 @@ async def main():
                                         print(f"Type de traitement non trouvé : {type_traitement_choisi}")
                         result = await func(pool, contrat_id, type_traitement)
 
-
                     elif table_name == "Planning":
                         # Récupérer les traitements associés au contrat
                         async with pool.acquire() as conn:
                             async with conn.cursor() as cursor:
                                 await cursor.execute(
-                                    "SELECT traitement_id, id_type_traitement FROM Traitement WHERE contrat_id = %s",
+                                    "SELECT traitement_id, id_type_traitement, contrat_id FROM Traitement WHERE contrat_id = %s",
                                     (contrat_id,))
                                 traitements = await cursor.fetchall()
                         if traitements:
-                            for traitement_id, id_type_traitement in traitements:
+                            for traitement_id, id_type_traitement, contrat_id in traitements:
                                 # Récupérer le nom du type de traitement
                                 type_traitement = next(
                                     key for key, val in types_traitement.items() if val == id_type_traitement)
+                                # Récupérer la durée du contrat
+                                duree_contrat = await obtenir_duree_contrat(pool, contrat_id)
                                 print(f"\nPlanification pour le traitement {type_traitement} (ID: {traitement_id}):")
+                                print(f"Durée du contrat : {duree_contrat}")
                                 mois_debut = input("Mois de début : ")
-                                mois_fin = input("Mois de fin : ")
+                                if duree_contrat == "Déterminée":
+                                    mois_fin = input("Mois de fin : ")
+                                else:
+                                    mois_fin = "Contrat à durée indéterminée"
                                 mois_pause = input("Mois de pause (facultatif) : ")
                                 # Sélection de la redondance
                                 if redondances:
@@ -504,7 +509,6 @@ async def main():
                                                     redondance_choisie)
                         else:
                             print("Aucun traitement trouvé pour ce contrat.")
-
                     elif table_name == "Facture":
                         traitement_id = int(input("ID du traitement : "))
                         montant = int(input("Montant : "))

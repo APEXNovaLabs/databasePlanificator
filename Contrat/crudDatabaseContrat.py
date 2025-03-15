@@ -169,6 +169,18 @@ async def create_facture(pool, traitement_id, montant, date_traitement, axe, rem
             await conn.commit()
             return cur.lastrowid
 
+# Obtention de l'axe mentionnée dans l'ajout du contrat
+async def obtenir_axe_contrat(pool, contrat_id):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SELECT axe FROM Contrat WHERE contrat_id = %s", (contrat_id,))
+            resultat = await cursor.fetchone()
+            if resultat:
+                return resultat[0]
+            else:
+                return None
+
+
 async def read_facture(pool, facture_id):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -509,13 +521,30 @@ async def main():
                                                     redondance_choisie)
                         else:
                             print("Aucun traitement trouvé pour ce contrat.")
+
                     elif table_name == "Facture":
-                        traitement_id = int(input("ID du traitement : "))
-                        montant = int(input("Montant : "))
-                        date_traitement = input("Date du traitement (AAAA-MM-JJ) : ")
-                        axe = input("Axe : ")
-                        remarque = input("Remarque (facultatif) : ")
-                        result = await func(pool, traitement_id, montant, date_traitement, axe, remarque)
+                        # Récupérer les traitements associés au contrat
+                        async with pool.acquire() as conn:
+                            async with conn.cursor() as cursor:
+                                await cursor.execute(
+                                    "SELECT traitement_id, id_type_traitement, contrat_id FROM Traitement WHERE contrat_id = %s",
+                                    (contrat_id,))
+                                traitements = await cursor.fetchall()
+                        if traitements:
+                            # Récupérer l'axe du contrat
+                            axe_contrat = await obtenir_axe_contrat(pool, contrat_id)
+                            for traitement_id, id_type_traitement, contrat_id in traitements:
+                                # Récupérer le nom du type de traitement
+                                type_traitement = next(
+                                    key for key, val in types_traitement.items() if val == id_type_traitement)
+                                print(f"\nFacture pour le traitement {type_traitement} (ID: {traitement_id}):")
+                                montant = int(input("Montant : "))
+                                date_traitement = input("Date du traitement (AAAA-MM-JJ) : ")
+                                remarque = input("Remarque (facultatif) : ")
+                                result = await func(pool, traitement_id, montant, date_traitement, axe_contrat,
+                                                    remarque)
+                        else:
+                            print("Aucun traitement trouvé pour ce contrat.")
 
                     elif table_name == "Historique":
                         facture_id = int(input("ID de la facture : "))

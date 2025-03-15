@@ -87,6 +87,12 @@ async def creation_traitement(pool, contrat_id, id_type_traitement):
             await conn.commit()
             return cur.lastrowid
 
+async def obtenir_types_traitement(pool):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SELECT typeTraitement FROM TypeTraitement")
+            resultats = await cursor.fetchall()
+            return [resultat[0] for resultat in resultats]
 
 
 async def read_traitement(pool, traitement_id):
@@ -246,6 +252,7 @@ async def main():
         categories_client = await obtenir_categories(pool, "Client", "categorie")
         categories_contrat_duree = await obtenir_categories(pool, "Contrat", "duree")
         categories_contrat_type = await obtenir_categories(pool, "Contrat", "categorie")
+        types_traitement = await obtenir_types_traitement(pool)
 
     finally:
         if pool:
@@ -394,7 +401,43 @@ async def main():
 
                     elif table_name == "Traitement":
                         contrat_id = int(input("ID du contrat : "))
-                        type_traitement = input("Type de traitement : ")
+                        # Sélection des types de traitement
+                        if types_traitement:
+                            print("Types de traitement disponibles:")
+                            for i, type_traitement in enumerate(types_traitement):
+                                print(f"{i + 1}. {type_traitement}")
+                            types_traitement_choisis = []
+                            while True:
+                                try:
+                                    choix = input(
+                                        "Choisissez un type de traitement (entrez les numéros séparés par des virgules, ou appuyez sur Entrée pour terminer): ")
+                                    if not choix:
+                                        break
+                                    choix_list = [int(c) - 1 for c in choix.split(",")]
+                                    for c in choix_list:
+                                        if 0 <= c < len(types_traitement):
+                                            types_traitement_choisis.append(types_traitement[c])
+                                        else:
+                                            print(f"Choix invalide : {c + 1}. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer des numéros séparés par des virgules.")
+                        else:
+                            print("Aucun type de traitement trouvé.")
+                        # Insertion des traitements sélectionnés
+                        for type_traitement_choisi in types_traitement_choisis:
+                            # Récupérer l'id du type de traitement
+                            async with pool.acquire() as conn:
+                                async with conn.cursor() as cursor:
+                                    await cursor.execute(
+                                        "SELECT id_type_traitement FROM TypeTraitement WHERE typeTraitement = %s",
+                                        (type_traitement_choisi,))
+                                    resultat = await cursor.fetchone()
+                                    if resultat:
+                                        id_type_traitement = resultat[0]
+                                        await func(pool, contrat_id,
+                                                   id_type_traitement)
+                                    else:
+                                        print(f"Type de traitement non trouvé : {type_traitement_choisi}")
                         result = await func(pool, contrat_id, type_traitement)
 
                     elif table_name == "Planning":

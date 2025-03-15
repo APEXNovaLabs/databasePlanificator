@@ -2,23 +2,24 @@ import asyncio
 import aiomysql
 from datetime import date
 
-async def create_client(pool, nom, prenom, email, telephone, adresse, categorie, axe):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Client (nom, prenom, email, telephone, adresse, date_ajout, categorie, axe) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (nom, prenom, email, telephone, adresse, date.today(), categorie, axe))
-            await conn.commit()
-            return cur.lastrowid  # Retourne l'ID du client créé
-
-async def obtenir_categories(pool):
+# Accès aux catégories
+async def obtenir_categories(pool, table_name, column_name):
     async with pool.acquire() as conn:
         async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM Client LIKE 'categorie'")
+            await cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE '{column_name}'")
             resultat = await cursor.fetchone()
             if resultat:
                 enum_str = resultat[1].split("'")[1::2]
                 return enum_str
             else:
                 return []
+
+async def create_client(pool, nom, prenom, email, telephone, adresse, categorie, axe):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("INSERT INTO Client (nom, prenom, email, telephone, adresse, date_ajout, categorie, axe) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (nom, prenom, email, telephone, adresse, date.today(), categorie, axe))
+            await conn.commit()
+            return cur.lastrowid  # Retourne l'ID du client créé
 
 
 async def read_client(pool, client_id):
@@ -39,6 +40,7 @@ async def delete_client(pool, client_id):
             await cur.execute("DELETE FROM Client WHERE client_id = %s", (client_id,))
             await conn.commit()
 
+# Pour le contrat
 async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, categorie):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -240,7 +242,9 @@ async def main():
             db=database,
             autocommit=True
         )
-        categories = await obtenir_categories(pool)
+        # Pour les catégories
+        categories_client = await obtenir_categories(pool, "Client", "categorie")
+        categories_contrat = await obtenir_categories(pool, "Contrat", "categorie")
     finally:
         if pool:
             pool.close()
@@ -312,14 +316,14 @@ async def main():
                         nom = input("Nom : ")
                         if categories:
                             print("Catégories disponibles:")
-                            for i, categorie in enumerate(categories):
+                            for i, categories_client in enumerate(categories):
                                 print(f"{i + 1}. {categorie}")
 
                             while True:
                                 try:
                                     choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
                                     if 0 <= choix < len(categories):
-                                        categorie_choisie = categories[choix]
+                                        categorie_choisie = categories_client[choix]
                                         break  # Sortir de la boucle si le choix est valide
                                     else:
                                         print("Choix invalide. Veuillez réessayer.")
@@ -345,8 +349,25 @@ async def main():
                         date_contrat = input("Date du contrat (AAAA-MM-JJ) : ")
                         date_debut = input("Date de début (AAAA-MM-JJ) : ")
                         date_fin = input("Date de fin (AAAA-MM-JJ) : ")
-                        categorie = input("Catégorie (Nouveau/Renouvellement) : ")
-                        result = await func(pool, client_id, date_contrat, date_debut, date_fin, categorie)
+                        if categories:
+                            print("Catégories disponibles:")
+                            for i, categories_contrat in enumerate(categories):
+                                print(f"{i + 1}. {categorie}")
+
+                            while True:
+                                try:
+                                    choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
+                                    if 0 <= choix < len(categories):
+                                        categorie_contrat_choisie = categories_client[choix]
+                                        break  # Sortir de la boucle si le choix est valide
+                                    else:
+                                        print("Choix invalide. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un numéro.")
+                        else:
+                            print("Aucune catégorie trouvée.")
+                            categorie_contrat_choisie = input("Entrez la catégorie manuellement : ")
+                        result = await func(pool, client_id, date_contrat, date_debut, date_fin, categorie_contrat_choisie)
 
                     elif table_name == "Traitement":
                         contrat_id = int(input("ID du contrat : "))

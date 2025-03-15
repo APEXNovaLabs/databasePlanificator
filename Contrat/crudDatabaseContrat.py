@@ -244,7 +244,9 @@ async def main():
         )
         # Pour les catégories
         categories_client = await obtenir_categories(pool, "Client", "categorie")
-        categories_contrat = await obtenir_categories(pool, "Contrat", "categorie")
+        categories_contrat_duree = await obtenir_categories(pool, "Contrat", "duree")
+        categories_contrat_type = await obtenir_categories(pool, "Contrat", "categorie")
+
     finally:
         if pool:
             pool.close()
@@ -345,29 +347,50 @@ async def main():
                         result = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
 
                     elif table_name == "Contrat":
-                        client_id = int(input("ID du client : "))  # Assurez-vous que le client existe
+                        client_id = int(input("ID du client : "))
                         date_contrat = input("Date du contrat (AAAA-MM-JJ) : ")
                         date_debut = input("Date de début (AAAA-MM-JJ) : ")
-                        date_fin = input("Date de fin (AAAA-MM-JJ) : ")
-                        if categories:
-                            print("Catégories disponibles:")
-                            for i, categories_contrat in enumerate(categories):
-                                print(f"{i + 1}. {categorie}")
-
+                        # Sélection de la catégorie de durée du contrat
+                        if categories_contrat_duree:
+                            print("Catégories de durée disponibles:")
+                            for i, categorie_contrat in enumerate(categories_contrat_duree):
+                                print(f"{i + 1}. {categorie_contrat}")
                             while True:
                                 try:
-                                    choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
-                                    if 0 <= choix < len(categories):
-                                        categorie_contrat_choisie = categories_client[choix]
-                                        break  # Sortir de la boucle si le choix est valide
+                                    choix = int(input("Choisissez une catégorie de durée (entrez le numéro): ")) - 1
+                                    if 0 <= choix < len(categories_contrat_duree):
+                                        duree_contrat_choisie = categories_contrat_duree[choix]
+                                        break
                                     else:
                                         print("Choix invalide. Veuillez réessayer.")
                                 except ValueError:
                                     print("Entrée invalide. Veuillez entrer un numéro.")
                         else:
-                            print("Aucune catégorie trouvée.")
-                            categorie_contrat_choisie = input("Entrez la catégorie manuellement : ")
-                        result = await func(pool, client_id, date_contrat, date_debut, date_fin, categorie_contrat_choisie)
+                            print("Aucune catégorie de durée trouvée.")
+                            duree_contrat_choisie = input("Entrez la catégorie de durée manuellement : ")
+                        if duree_contrat_choisie != "Indeterminée":
+                            date_fin = input("Date de fin (AAAA-MM-JJ) : ")
+                        else:
+                            date_fin = None  # ou une valeur par défaut, par exemple '0000-00-00'
+                        if categories_contrat_type:
+                            print("Catégories de type disponibles:")
+                            for i, categorie_type_contrat in enumerate(categories_contrat_type):
+                                print(f"{i + 1}. {categorie_type_contrat}")
+                            while True:
+                                try:
+                                    choix = int(input("Choisissez une catégorie de type (entrez le numéro): ")) - 1
+                                    if 0 <= choix < len(categories_contrat_type):
+                                        categorie_contrat_choisie = categories_contrat_type[choix]
+                                        break
+                                    else:
+                                        print("Choix invalide. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un numéro.")
+                        else:
+                            print("Aucune catégorie de type trouvée.")
+                            categorie_contrat_choisie = input("Entrez la catégorie de type manuellement : ")
+                        result = await func(pool, client_id, date_contrat, date_debut, date_fin, duree_contrat_choisie,
+                                            categorie_contrat_choisie)
 
                     elif table_name == "Traitement":
                         contrat_id = int(input("ID du contrat : "))

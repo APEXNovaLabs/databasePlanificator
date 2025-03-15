@@ -94,52 +94,25 @@ async def main():
             db=database,
             autocommit=True
         )
-    finally:
-        if pool:
-            pool.close()
-            await pool.wait_closed()
 
-    try:
-        # Création d'un historique pour un traitement
-        historique_id = await create_historique(pool, 1, "Traitement effectué avec succès.", date(2023, 11, 20))
-        print(f"Historique créé avec l'ID: {historique_id}")
+        while True:
+            print("\nMenu:")
+            print("1. Lire un historique")
+            print("2. Modifier un historique")
+            print("3. Supprimer un historique")
+            print("4. Afficher l'historique d'un traitement")
+            print("5. Afficher l'historique d'un client")
+            print("6. Quitter")
 
-        # Lecture de l'historique
-        historique = await read_historique(pool, historique_id)
-        print(f"Historique lu: {historique}")
+            choix = input("Choisissez une option (1-6): ")
 
-        # Modification de l'historique
-        await update_historique(pool, historique_id, "Traitement modifié.", date(2023, 11, 21))
-        print("Historique modifié.")
+            if choix == '1':
+                historique_id = int(input("ID de l'historique à lire: "))
+                historique = await read_historique(pool, historique_id)
+                print(f"Historique: {historique}")
 
-        # Récupération de l'historique pour un traitement
-        historiques_traitement = await get_historique_for_traitement(pool, 1)
-        print(f"Historique pour le traitement 1: {historiques_traitement}")
-
-        # Création automatique de l'historique pour un planning
-        await create_historique_for_planning(pool, 1)
-        print("Historique créé pour le planning.")
-
-        # Affichage de l'historique d'un client
-        await afficher_historique_client(pool, 1)
-
-        # Suppression de l'historique
-        await delete_historique(pool, historique_id)
-        print("Historique supprimé.")
-
-    except aiomysql.OperationalError as e:
-        print(f"Erreur de connexion à la base de données: {e}")
-    except aiomysql.IntegrityError as e:
-        print(f"Violation de contrainte d'intégrité: {e}")
-    except ValueError as e:
-        print(f"Erreur de valeur: {e}")
-    except Exception as e:
-        print(f"Erreur inattendue: {e}")
-
-    finally:
-        if pool:
-            pool.close()
-            await pool.wait_closed()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+            elif choix == '2':
+                historique_id = int(input("ID de l'historique à modifier: "))
+                contenu = input("Nouveau contenu: ")
+                date_traitement_str = input("Nouvelle date du traitement (AAAA-MM-JJ): ")
+                date_traitement = datetime.strptime(date_traitement_str, "%Y-%m-%d").date()

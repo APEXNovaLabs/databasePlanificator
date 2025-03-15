@@ -65,7 +65,18 @@ async def delete_contrat(pool, contrat_id):
             await conn.commit()
 
 # Pour la table traitement
-types_traitement_valides = ["Dératisation", "Désinfection", "Désinsectisation", "Nettoyage"]
+
+async def typestraitement(pool):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SHOW COLUMNS FROM TypeTraitement LIKE 'typeTraitement'")
+            resultat = await cursor.fetchone()
+            if resultat:
+                enum_str = resultat[1].split("'")[1::2]
+                return enum_str
+            else:
+                return []
+
 
 async def creation_traitement(pool, contrat_id, id_type_traitement):
     async with pool.acquire() as conn:
@@ -73,6 +84,7 @@ async def creation_traitement(pool, contrat_id, id_type_traitement):
             await cur.execute("INSERT INTO Traitement (contrat_id, id_type_traitement) VALUES (%s, %s)", (contrat_id, id_type_traitement))
             await conn.commit()
             return cur.lastrowid
+
 
 
 async def read_traitement(pool, traitement_id):

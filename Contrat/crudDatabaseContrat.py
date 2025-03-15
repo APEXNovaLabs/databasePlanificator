@@ -9,6 +9,18 @@ async def create_client(pool, nom, prenom, email, telephone, adresse, categorie,
             await conn.commit()
             return cur.lastrowid  # Retourne l'ID du client créé
 
+async def obtenir_categories(pool):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SHOW COLUMNS FROM Client LIKE 'categorie'")
+            resultat = await cursor.fetchone()
+            if resultat:
+                enum_str = resultat[1].split("'")[1::2]
+                return enum_str
+            else:
+                return []
+
+
 async def read_client(pool, client_id):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -216,6 +228,7 @@ async def main():
             db=database,
             autocommit=True
         )
+        categories = await obtenir_categories(pool)
     finally:
         if pool:
             pool.close()
@@ -283,16 +296,24 @@ async def main():
 
             try:
                 if operation == 'create':
-                    # ... (Demander les informations nécessaires pour la création, en tenant compte des relations entre les tables)
                     if table_name == "Client":
                         nom = input("Nom : ")
                         prenom = input("Prénom (facultatif) : ")
                         email = input("Email : ")
                         telephone = input("Téléphone : ")
                         adresse = input("Adresse : ")
-                        categorie = input("Catégorie (Particulier/Organisation/Société) : ")
+                        if categories:
+                            print("Catégories disponibles:")
+                            for i, categorie in enumerate(categories):
+                                print(f"{i + 1}. {categorie}")
+
+                            choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
+                            categorie_choisie = categories[choix]
+                        else:
+                            print("Aucune catégorie trouvée.")
+                            categorie_choisie = input("Entrez la catégorie manuellement : ")
                         axe = input("Axe : ")
-                        result = await func(pool, nom, prenom, email, telephone, adresse, categorie, axe)
+                        result = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
 
                     elif table_name == "Contrat":
                         client_id = int(input("ID du client : "))  # Assurez-vous que le client existe
@@ -409,9 +430,14 @@ async def main():
                               except Exception as e:
                                   print(f"Erreur : {e}")
 
+            except aiomysql.OperationalError as e:
+                print(f"Erreur de connexion à la base de données : {e}")
+            except aiomysql.IntegrityError as e:
+                print(f"Violation de contrainte d'intégrité : {e}")
+            except ValueError as e:
+                print(f"Erreur de valeur : {e}")
             except Exception as e:
-                print(f"Erreur : {e}")
-
+                print(f"Erreur inattendue : {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())

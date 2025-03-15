@@ -120,6 +120,28 @@ async def create_planning(pool, traitement_id, mois_debut, mois_fin, mois_pause,
             await cur.execute("INSERT INTO Planning (traitement_id, mois_debut, mois_fin, mois_pause, redondance) VALUES (%s, %s, %s, %s, %s)", (traitement_id, mois_debut, mois_fin, mois_pause, redondance)) # type_traitement supprimé
             await conn.commit()
             return cur.lastrowid
+# Pour avoir la rédondance du contrat et faciliter l'utilisation
+async def obtenir_redondances(pool):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SHOW COLUMNS FROM Planning LIKE 'redondance'")
+            resultat = await cursor.fetchone()
+            if resultat:
+                enum_str = resultat[1].split("'")[1::2]
+                return enum_str
+            else:
+                return []
+
+# Pour véfifier la durée du contrat et afficher les choses en fonction de cela
+async def obtenir_duree_contrat(pool, contrat_id):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SELECT duree FROM Contrat WHERE contrat_id = %s", (contrat_id,))
+            resultat = await cursor.fetchone()
+            if resultat:
+                return resultat[0]
+            else:
+                return None
 
 async def read_planning(pool, planning_id):
     async with pool.acquire() as conn:
@@ -253,6 +275,7 @@ async def main():
         categories_contrat_duree = await obtenir_categories(pool, "Contrat", "duree")
         categories_contrat_type = await obtenir_categories(pool, "Contrat", "categorie")
         types_traitement = await obtenir_types_traitement(pool)
+        redondances = await obtenir_redondances(pool)
 
     finally:
         if pool:
@@ -440,15 +463,47 @@ async def main():
                                         print(f"Type de traitement non trouvé : {type_traitement_choisi}")
                         result = await func(pool, contrat_id, type_traitement)
 
+
                     elif table_name == "Planning":
-                        traitement_id = int(input("ID du traitement : "))
-                        mois_debut = input("Mois de début : ")
-                        mois_fin = input("Mois de fin : ")
-                        type_traitement = input("Type de traitement : ")
-                        mois_pause = input("Mois de pause (facultatif) : ")
-                        redondance = input("Redondance (Mensuel/Hebdo) : ")
-                        result = await func(pool, traitement_id, mois_debut, mois_fin, type_traitement, mois_pause,
-                                            redondance)
+                        # Récupérer les traitements associés au contrat
+                        async with pool.acquire() as conn:
+                            async with conn.cursor() as cursor:
+                                await cursor.execute(
+                                    "SELECT traitement_id, id_type_traitement FROM Traitement WHERE contrat_id = %s",
+                                    (contrat_id,))
+                                traitements = await cursor.fetchall()
+                        if traitements:
+                            for traitement_id, id_type_traitement in traitements:
+                                # Récupérer le nom du type de traitement
+                                type_traitement = next(
+                                    key for key, val in types_traitement.items() if val == id_type_traitement)
+                                print(f"\nPlanification pour le traitement {type_traitement} (ID: {traitement_id}):")
+                                mois_debut = input("Mois de début : ")
+                                mois_fin = input("Mois de fin : ")
+                                mois_pause = input("Mois de pause (facultatif) : ")
+                                # Sélection de la redondance
+                                if redondances:
+                                    print("Options de redondance disponibles:")
+                                    for i, redondance in enumerate(redondances):
+                                        print(f"{i + 1}. {redondance}")
+                                    while True:
+                                        try:
+                                            choix = int(
+                                                input("Choisissez une option de redondance (entrez le numéro): ")) - 1
+                                            if 0 <= choix < len(redondances):
+                                                redondance_choisie = redondances[choix]
+                                                break
+                                            else:
+                                                print("Choix invalide. Veuillez réessayer.")
+                                        except ValueError:
+                                            print("Entrée invalide. Veuillez entrer un numéro.")
+                                else:
+                                    print("Aucune option de redondance trouvée.")
+                                    redondance_choisie = input("Entrez l'option de redondance manuellement : ")
+                                result = await func(pool, traitement_id, mois_debut, mois_fin, mois_pause,
+                                                    redondance_choisie)
+                        else:
+                            print("Aucun traitement trouvé pour ce contrat.")
 
                     elif table_name == "Facture":
                         traitement_id = int(input("ID du traitement : "))

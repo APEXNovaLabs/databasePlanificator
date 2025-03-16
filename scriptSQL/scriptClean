@@ -124,7 +124,7 @@ CREATE TABLE Contrat (
                          client_id INT NOT NULL,
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
-                         date_fin VARCHAR (50),
+                         date_fin VARCHAR(50),
                          duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
@@ -206,8 +206,8 @@ CREATE TABLE Historique (
 );
 
 -- Table Avancement
-CREATE TABLE Avancement (
-                            avancement_id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE Signalement (
+                            signalement_id INT PRIMARY KEY AUTO_INCREMENT,
                             planning_detail_id INT NOT NULL,
                             motif TEXT NOT NULL,
                             type ENUM ('Avancement', 'Décalage') NOT NULL,

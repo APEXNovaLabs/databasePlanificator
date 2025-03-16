@@ -1,6 +1,3 @@
-import asyncio
-import aiomysql
-
 async def typestraitement(pool):
     async with pool.acquire() as conn:
         async with conn.cursor() as cursor:

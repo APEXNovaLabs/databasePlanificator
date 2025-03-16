@@ -1,10 +1,10 @@
 import asyncio
 import aiomysql
-from datetime import date
 from client import create_client, read_client, update_client, delete_client, obtenir_categories
 from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
 from traitement import typestraitement, creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
 from planning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
+from facture import create_facture, read_facture, obtenir_axe_contrat, delete_facture, update_facture
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
     async with pool.acquire() as conn:
@@ -16,44 +16,6 @@ async def obtenir_categories(pool, table_name, column_name):
                 return enum_str
             else:
                 return []
-
-# Pour la facture
-async def create_facture(pool, traitement_id, montant, date_traitement, axe, remarque):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Facture (traitement_id, montant, date_traitement, axe, remarque) VALUES (%s, %s, %s, %s, %s)", (traitement_id, montant, date_traitement, axe, remarque))
-            await conn.commit()
-            return cur.lastrowid
-
-# Obtention de l'axe mentionnée dans l'ajout du contrat
-async def obtenir_axe_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT axe FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            resultat = await cursor.fetchone()
-            if resultat:
-                return resultat[0]
-            else:
-                return None
-
-
-async def read_facture(pool, facture_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Facture WHERE facture_id = %s", (facture_id,))
-            return await cur.fetchone()
-
-async def update_facture(pool, facture_id, traitement_id, montant, date_traitement, axe, remarque):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Facture SET traitement_id = %s, montant = %s, date_traitement = %s, axe = %s, remarque = %s WHERE facture_id = %s", (traitement_id, montant, date_traitement, axe, remarque, facture_id))
-            await conn.commit()
-
-async def delete_facture(pool, facture_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Facture WHERE facture_id = %s", (facture_id,))
-            await conn.commit()
 
 # Pour Historique
 async def create_historique(pool, facture_id, contenu):

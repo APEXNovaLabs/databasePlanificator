@@ -1,6 +1,3 @@
-import asyncio
-import aiomysql
-
 async def create_planning(pool, traitement_id, mois_debut, mois_fin, mois_pause, redondance):
     """Crée un planning pour un traitement donné."""
     async with pool.acquire() as conn:

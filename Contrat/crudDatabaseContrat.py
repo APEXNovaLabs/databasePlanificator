@@ -1,8 +1,10 @@
 import asyncio
 import aiomysql
 from datetime import date
+from client import create_client, read_client, update_client, delete_client, obtenir_categories
 from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
-
+from traitement import typestraitement, creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
+from planning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
     async with pool.acquire() as conn:
@@ -14,101 +16,6 @@ async def obtenir_categories(pool, table_name, column_name):
                 return enum_str
             else:
                 return []
-
-# Pour la table traitement
-
-async def typestraitement(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM TypeTraitement LIKE 'typeTraitement'")
-            resultat = await cursor.fetchone()
-            if resultat:
-                enum_str = resultat[1].split("'")[1::2]
-                return enum_str
-            else:
-                return []
-
-
-async def creation_traitement(pool, contrat_id, id_type_traitement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Traitement (contrat_id, id_type_traitement) VALUES (%s, %s)", (contrat_id, id_type_traitement))
-            await conn.commit()
-            return cur.lastrowid
-
-async def obtenir_types_traitement(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT typeTraitement FROM TypeTraitement")
-            resultats = await cursor.fetchall()
-            return [resultat[0] for resultat in resultats]
-
-
-async def read_traitement(pool, traitement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Traitement WHERE traitement_id = %s", (traitement_id,))
-            return await cur.fetchone()
-
-async def update_traitement(pool, traitement_id, contrat_id, type_traitement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Traitement SET contrat_id = %s, type_traitement = %s WHERE traitement_id = %s", (contrat_id, type_traitement, traitement_id))
-            await conn.commit()
-
-async def delete_traitement(pool, traitement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Traitement WHERE traitement_id = %s", (traitement_id,))
-            await conn.commit()
-
-# Pour le planning
-async def create_planning(pool, traitement_id, mois_debut, mois_fin, mois_pause, redondance): # type_traitement supprimé
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Planning (traitement_id, mois_debut, mois_fin, mois_pause, redondance) VALUES (%s, %s, %s, %s, %s)", (traitement_id, mois_debut, mois_fin, mois_pause, redondance)) # type_traitement supprimé
-            await conn.commit()
-            return cur.lastrowid
-# Pour avoir la rédondance du contrat et faciliter l'utilisation
-async def obtenir_redondances(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM Planning LIKE 'redondance'")
-            resultat = await cursor.fetchone()
-            if resultat:
-                enum_str = resultat[1].split("'")[1::2]
-                return enum_str
-            else:
-                return []
-
-# Pour véfifier la durée du contrat et afficher les choses en fonction de cela
-async def obtenir_duree_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT duree FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            resultat = await cursor.fetchone()
-            if resultat:
-                return resultat[0]
-            else:
-                return None
-
-async def read_planning(pool, planning_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Planning WHERE planning_id = %s", (planning_id,))
-            return await cur.fetchone()
-
-async def update_planning(pool, planning_id, traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Planning SET traitement_id = %s, mois_debut = %s, mois_fin = %s, type_traitement = %s, mois_pause = %s, redondance = %s WHERE planning_id = %s", (traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance, planning_id))
-            await conn.commit()
-
-async def delete_planning(pool, planning_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Planning WHERE planning_id = %s", (planning_id,))
-            await conn.commit()
 
 # Pour la facture
 async def create_facture(pool, traitement_id, montant, date_traitement, axe, remarque):

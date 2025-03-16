@@ -2,10 +2,10 @@ import asyncio
 import aiomysql
 from datetime import date
 
-async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, categorie):
+async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, duree, categorie):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, duree, categorie) VALUES (%s, %s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, categorie))
+            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, duree, categorie) VALUES (%s, %s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, duree, categorie))
             await conn.commit()
             return cur.lastrowid
 
@@ -15,10 +15,10 @@ async def read_contrat(pool, contrat_id):
             await cur.execute("SELECT * FROM Contrat WHERE contrat_id = %s", (contrat_id,))
             return await cur.fetchone()
 
-async def update_contrat(pool, contrat_id, client_id, date_contrat, date_debut, date_fin, categorie):
+async def update_contrat(pool, contrat_id, client_id, date_contrat, date_debut, date_fin, duree, categorie):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin = %s, categorie = %s WHERE contrat_id = %s", (client_id, date_contrat, date_debut, date_fin, categorie, contrat_id))
+            await cur.execute("UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin = %s, duree = %s, categorie = %s WHERE contrat_id = %s", (client_id, date_contrat, date_debut, date_fin, categorie, contrat_id))
             await conn.commit()
 
 async def delete_contrat(pool, contrat_id):

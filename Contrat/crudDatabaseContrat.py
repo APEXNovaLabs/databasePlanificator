@@ -5,6 +5,7 @@ from contrat import create_contrat, read_contrat, update_contrat, delete_contrat
 from traitement import typestraitement, creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
 from planning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
 from facture import create_facture, read_facture, obtenir_axe_contrat, delete_facture, update_facture
+
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
     async with pool.acquire() as conn:
@@ -16,32 +17,6 @@ async def obtenir_categories(pool, table_name, column_name):
                 return enum_str
             else:
                 return []
-
-# Pour Historique
-async def create_historique(pool, facture_id, contenu):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Historique (facture_id, contenu) VALUES (%s, %s)", (facture_id, contenu))
-            await conn.commit()
-            return cur.lastrowid
-
-async def read_historique(pool, historique_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Historique WHERE historique_id = %s", (historique_id,))
-            return await cur.fetchone()
-
-async def update_historique(pool, historique_id, facture_id, contenu):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Historique SET facture_id = %s, contenu = %s WHERE historique_id = %s", (facture_id, contenu, historique_id))
-            await conn.commit()
-
-async def delete_historique(pool, historique_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Historique WHERE historique_id = %s", (historique_id,))
-            await conn.commit()
 
 # Pour avancement
 async def create_avancement(pool, traitement_id, motif, type_avancement):
@@ -120,12 +95,11 @@ async def main():
         print("3. Traitement")
         print("4. Planning")
         print("5. Facture")
-        print("6. Historique")
-        print("7. Avancement")
-        print("8. Quitter")
+        print("6. Signalement")
+        print("7. Quitter")
 
 
-        choix_table = input("Choisissez une table (1-8) : ")
+        choix_table = input("Choisissez une table (1-7) : ")
 
         if choix_table == '8':
             break
@@ -141,9 +115,7 @@ async def main():
                   'delete': delete_planning, 'name': "Planning"},
             '5': {'create': create_facture, 'read': read_facture, 'update': update_facture, 'delete': delete_facture,
                   'name': "Facture"},
-            '6': {'create': create_historique, 'read': read_historique, 'update': update_historique,
-                  'delete': delete_historique, 'name': "Historique"},
-            '7': {'create': create_avancement, 'read': read_avancement, 'update': update_avancement,
+            '6': {'create': create_avancement, 'read': read_avancement, 'update': update_avancement,
                   'delete': delete_avancement, 'name': "Avancement"},
         }
 

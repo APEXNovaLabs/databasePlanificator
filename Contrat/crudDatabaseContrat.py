@@ -1,7 +1,15 @@
 import asyncio
 import aiomysql
-from datetime import date
+from client import create_client, read_client, update_client, delete_client, obtenir_categories
 from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
+from traitement import typestraitement, creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
+from planning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
+from facture import create_facture, read_facture, obtenir_axe_contrat, delete_facture, update_facture
+from signalement import create_signalement, read_signalement, update_signalement, delete_signalement
+"""
+  **** Remarque: l'historique présent dans ce fichier est obsolète
+  Veuillez vous reférer au fichier historique.py pour le code fonctionnel
+"""
 
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
@@ -14,192 +22,6 @@ async def obtenir_categories(pool, table_name, column_name):
                 return enum_str
             else:
                 return []
-
-# Pour la table traitement
-
-async def typestraitement(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM TypeTraitement LIKE 'typeTraitement'")
-            resultat = await cursor.fetchone()
-            if resultat:
-                enum_str = resultat[1].split("'")[1::2]
-                return enum_str
-            else:
-                return []
-
-
-async def creation_traitement(pool, contrat_id, id_type_traitement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Traitement (contrat_id, id_type_traitement) VALUES (%s, %s)", (contrat_id, id_type_traitement))
-            await conn.commit()
-            return cur.lastrowid
-
-async def obtenir_types_traitement(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT typeTraitement FROM TypeTraitement")
-            resultats = await cursor.fetchall()
-            return [resultat[0] for resultat in resultats]
-
-
-async def read_traitement(pool, traitement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Traitement WHERE traitement_id = %s", (traitement_id,))
-            return await cur.fetchone()
-
-async def update_traitement(pool, traitement_id, contrat_id, type_traitement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Traitement SET contrat_id = %s, type_traitement = %s WHERE traitement_id = %s", (contrat_id, type_traitement, traitement_id))
-            await conn.commit()
-
-async def delete_traitement(pool, traitement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Traitement WHERE traitement_id = %s", (traitement_id,))
-            await conn.commit()
-
-# Pour le planning
-async def create_planning(pool, traitement_id, mois_debut, mois_fin, mois_pause, redondance): # type_traitement supprimé
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Planning (traitement_id, mois_debut, mois_fin, mois_pause, redondance) VALUES (%s, %s, %s, %s, %s)", (traitement_id, mois_debut, mois_fin, mois_pause, redondance)) # type_traitement supprimé
-            await conn.commit()
-            return cur.lastrowid
-# Pour avoir la rédondance du contrat et faciliter l'utilisation
-async def obtenir_redondances(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM Planning LIKE 'redondance'")
-            resultat = await cursor.fetchone()
-            if resultat:
-                enum_str = resultat[1].split("'")[1::2]
-                return enum_str
-            else:
-                return []
-
-# Pour véfifier la durée du contrat et afficher les choses en fonction de cela
-async def obtenir_duree_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT duree FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            resultat = await cursor.fetchone()
-            if resultat:
-                return resultat[0]
-            else:
-                return None
-
-async def read_planning(pool, planning_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Planning WHERE planning_id = %s", (planning_id,))
-            return await cur.fetchone()
-
-async def update_planning(pool, planning_id, traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Planning SET traitement_id = %s, mois_debut = %s, mois_fin = %s, type_traitement = %s, mois_pause = %s, redondance = %s WHERE planning_id = %s", (traitement_id, mois_debut, mois_fin, type_traitement, mois_pause, redondance, planning_id))
-            await conn.commit()
-
-async def delete_planning(pool, planning_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Planning WHERE planning_id = %s", (planning_id,))
-            await conn.commit()
-
-# Pour la facture
-async def create_facture(pool, traitement_id, montant, date_traitement, axe, remarque):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Facture (traitement_id, montant, date_traitement, axe, remarque) VALUES (%s, %s, %s, %s, %s)", (traitement_id, montant, date_traitement, axe, remarque))
-            await conn.commit()
-            return cur.lastrowid
-
-# Obtention de l'axe mentionnée dans l'ajout du contrat
-async def obtenir_axe_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT axe FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            resultat = await cursor.fetchone()
-            if resultat:
-                return resultat[0]
-            else:
-                return None
-
-
-async def read_facture(pool, facture_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Facture WHERE facture_id = %s", (facture_id,))
-            return await cur.fetchone()
-
-async def update_facture(pool, facture_id, traitement_id, montant, date_traitement, axe, remarque):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Facture SET traitement_id = %s, montant = %s, date_traitement = %s, axe = %s, remarque = %s WHERE facture_id = %s", (traitement_id, montant, date_traitement, axe, remarque, facture_id))
-            await conn.commit()
-
-async def delete_facture(pool, facture_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Facture WHERE facture_id = %s", (facture_id,))
-            await conn.commit()
-
-# Pour Historique
-async def create_historique(pool, facture_id, contenu):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Historique (facture_id, contenu) VALUES (%s, %s)", (facture_id, contenu))
-            await conn.commit()
-            return cur.lastrowid
-
-async def read_historique(pool, historique_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Historique WHERE historique_id = %s", (historique_id,))
-            return await cur.fetchone()
-
-async def update_historique(pool, historique_id, facture_id, contenu):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Historique SET facture_id = %s, contenu = %s WHERE historique_id = %s", (facture_id, contenu, historique_id))
-            await conn.commit()
-
-async def delete_historique(pool, historique_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Historique WHERE historique_id = %s", (historique_id,))
-            await conn.commit()
-
-# Pour avancement
-async def create_avancement(pool, traitement_id, motif, type_avancement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Avancement (traitement_id, motif, type) VALUES (%s, %s, %s)", (traitement_id, motif, type_avancement))
-            await conn.commit()
-            return cur.lastrowid
-
-async def read_avancement(pool, avancement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Avancement WHERE avancement_id = %s", (avancement_id,))
-            return await cur.fetchone()
-
-async def update_avancement(pool, avancement_id, traitement_id, motif, type_avancement):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Avancement SET traitement_id = %s, motif = %s, type = %s WHERE avancement_id = %s", (traitement_id, motif, type_avancement, avancement_id))
-            await conn.commit()
-
-async def delete_avancement(pool, avancement_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Avancement WHERE avancement_id = %s", (avancement_id,))
-            await conn.commit()
-
 
 async def main():
     # Connexion à la base de données
@@ -251,14 +73,13 @@ async def main():
         print("3. Traitement")
         print("4. Planning")
         print("5. Facture")
-        print("6. Historique")
-        print("7. Avancement")
-        print("8. Quitter")
+        print("6. Signalement")
+        print("7. Quitter")
 
 
-        choix_table = input("Choisissez une table (1-8) : ")
+        choix_table = input("Choisissez une table (1-7) : ")
 
-        if choix_table == '8':
+        if choix_table == '7':
             break
 
         table_functions = {
@@ -272,10 +93,8 @@ async def main():
                   'delete': delete_planning, 'name': "Planning"},
             '5': {'create': create_facture, 'read': read_facture, 'update': update_facture, 'delete': delete_facture,
                   'name': "Facture"},
-            '6': {'create': create_historique, 'read': read_historique, 'update': update_historique,
-                  'delete': delete_historique, 'name': "Historique"},
-            '7': {'create': create_avancement, 'read': read_avancement, 'update': update_avancement,
-                  'delete': delete_avancement, 'name': "Avancement"},
+            '6': {'create': create_signalement, 'read': read_signalement, 'update': update_signalement,
+                  'delete': delete_signalement, 'name': "Signalement"},
         }
 
         if choix_table not in table_functions:
@@ -304,15 +123,15 @@ async def main():
                 if operation == 'create':
                     if table_name == "Client":
                         nom = input("Nom : ")
-                        if categories:
+                        if categorie:
                             print("Catégories disponibles:")
-                            for i, categories_client in enumerate(categories):
+                            for i, categories_client in enumerate(categorie):
                                 print(f"{i + 1}. {categorie}")
 
                             while True:
                                 try:
                                     choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
-                                    if 0 <= choix < len(categories):
+                                    if 0 <= choix < len(categorie):
                                         categorie_choisie = categories_client[choix]
                                         break  # Sortir de la boucle si le choix est valide
                                     else:
@@ -504,8 +323,7 @@ async def main():
                     id_a_lire = int(input(f"ID du {table_name} à lire : "))
                     result = await func(pool, id_a_lire)
                     print(result)
-
-                elif operation == 'update':
+                elif operation == 'update' :
                     id_a_modifier = int(input(f"ID du {table_name} à modifier : "))
                     if table_name == "Client":
                         nom = input("Nouveau nom : ")
@@ -513,24 +331,80 @@ async def main():
                         email = input("Nouvel email : ")
                         telephone = input("Nouveau téléphone : ")
                         adresse = input("Nouvelle adresse : ")
-                        categorie = input("Nouvelle catégorie (Particulier/Organisation/Société) : ")
-                        axe = input("Nouvel axe : ")
-                        await func(pool, id_a_modifier, nom, prenom, email, telephone, adresse, categorie, axe)
+                        # Sélection de la catégorie du client
+                        if categories_client:
+                            print("Catégories disponibles:")
+                            for i, categorie in enumerate(categories_client):
+                                print(f"{i + 1}. {categorie}")
+                                while True:
+                                    try:
+                                        choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
+                                        if 0 <= choix < len(categories_client):
+                                            categorie_choisie = categories_client[choix]
+                                            break
+                                        else:
+                                            print("Choix invalide. Veuillez réessayer.")
+                                    except ValueError:
+                                        print("Entrée invalide. Veuillez entrer un numéro.")
+                        else:
+                            print("Aucune catégorie trouvée.")
+                            categorie_choisie = input("Entrez la catégorie manuellement : ")
+                            axe = input("Nouvel axe : ")
+                    await func(pool, id_a_modifier, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
 
-                    elif table_name == "Contrat":
-                        client_id = int(input("Nouvel ID du client : "))
-                        date_contrat = input("Nouvelle date du contrat (AAAA-MM-JJ) : ")
-                        date_debut = input("Nouvelle date de début (AAAA-MM-JJ) : ")
+                elif table_name == "Contrat":
+                    client_id = int(input("Nouvel ID du client : "))
+                    date_contrat = input("Nouvelle date du contrat (AAAA-MM-JJ) : ")
+                    date_debut = input("Nouvelle date de début (AAAA-MM-JJ) : ")
+                    # Sélection de la durée du contrat
+                    if categories_contrat_duree:
+                        print("Catégories de durée disponibles:")
+                        for i, categorie_contrat in enumerate(categories_contrat_duree):
+                            print(f"{i + 1}. {categorie_contrat}")
+                        while True:
+                            try:
+                                choix = int(input("Choisissez une catégorie de durée (entrez le numéro): ")) - 1
+                                if 0 <= choix < len(categories_contrat_duree):
+                                    duree_contrat_choisie = categories_contrat_duree[choix]
+                                    break
+                                else:
+                                    print("Choix invalide. Veuillez réessayer.")
+                            except ValueError:
+                                print("Entrée invalide. Veuillez entrer un numéro.")
+                    else:
+                        print("Aucune catégorie de durée trouvée.")
+                    duree_contrat_choisie = input("Entrez la catégorie de durée manuellement : ")
+                    if duree_contrat_choisie != "Indeterminée":
                         date_fin = input("Nouvelle date de fin (AAAA-MM-JJ) : ")
-                        categorie = input("Nouvelle catégorie (Nouveau/Renouvellement) : ")
-                        await func(pool, id_a_modifier, client_id, date_contrat, date_debut, date_fin, categorie)
+                    else:
+                        date_fin = None  # ou une valeur par défaut, par exemple '0000-00-00'
+                    # Sélection de la catégorie du contrat
+                    if categories_contrat_type:
+                        print("Catégories de type disponibles:")
+                        for i, categorie_type_contrat in enumerate(categories_contrat_type):
+                            print(f"{i + 1}. {categorie_type_contrat}")
+                            while True:
+                                try:
+                                    choix = int(input("Choisissez une catégorie de type (entrez le numéro): ")) - 1
+                                    if 0 <= choix < len(categories_contrat_type):
+                                        categorie_contrat_choisie = categories_contrat_type[choix]
+                                        break
+                                    else:
+                                        print("Choix invalide. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un numéro.")
+                    else:
+                        print("Aucune catégorie de type trouvée.")
+                        categorie_contrat_choisie = input("Entrez la catégorie de type manuellement : ")
+                        await func(pool, id_a_modifier, client_id, date_contrat, date_debut, date_fin, duree_contrat_choisie,
+                           categorie_contrat_choisie)
 
-                    elif table_name == "Traitement":
+                elif table_name == "Traitement":
                         contrat_id = int(input("Nouveau ID du contrat : "))
                         type_traitement = input("Nouveau type de traitement : ")
                         await func(pool, id_a_modifier, contrat_id, type_traitement)
 
-                    elif table_name == "Planning":
+                elif table_name == "Planning":
                         traitement_id = int(input("Nouveau ID du traitement : "))
                         mois_debut = input("Nouveau mois de début : ")
                         mois_fin = input("Nouveau mois de fin : ")
@@ -538,7 +412,8 @@ async def main():
                         redondance = input("Nouvelle redondance (Mensuel/Hebdo) : ")
                         await func(pool, id_a_modifier, traitement_id, mois_debut, mois_fin,
                                    mois_pause, redondance)
-                    elif table_name == "Facture":
+
+                elif table_name == "Facture":
                             traitement_id = int(input("Nouveau ID du traitement : "))
                             # Vérifier si le traitement existe
                             if not await read_traitement(pool, traitement_id):
@@ -549,9 +424,9 @@ async def main():
                             axe = input("Nouvel axe : ")
                             remarque = input("Nouvelle remarque (facultatif) : ")
                             await func(pool, id_a_modifier, traitement_id, montant, date_traitement, axe, remarque)
-                    elif choix_table == '8':  # Si l'utilisateur choisit "Avancement"
+                elif choix_table == '6':
                           while True:
-                              print(f"\nOpérations pour Avancement:")
+                              print(f"\n Effectuer un signalement: ")
                               print("1. Créer")
                               print("2. Lire")
                               print("3. Modifier")
@@ -561,7 +436,6 @@ async def main():
 
                           if choix_operation == '5':
                               break
-
                           if choix_operation not in ('1', '2', '3', '4'):
                               print("Choix d'opération invalide.")
                               continue
@@ -569,13 +443,96 @@ async def main():
                               func = table_functions[choix_table][operation]
                               try:
                                   if operation == 'create':
-                                      traitement_id = int(input("ID du traitement pour l'avancement : "))
-                                      motif = input("Motif de l'avancement : ")
-                                      type_avancement = input("Type d'avancement (Avancement/Décalage) : ")
-                                      result = await func(pool, traitement_id, motif, type_avancement)
-                                      print(f"Avancement créé avec l'ID : {result}")
+                                      traitement_id = int(input("ID du traitement pour le signalement : "))
+
+                                      # Récupérer les planning_detail_id associés au traitement
+                                      async with pool.acquire() as conn:
+                                          async with conn.cursor() as cursor:
+                                              await cursor.execute(
+                                                  "SELECT planning_detail_id FROM PlanningDetails WHERE traitement_id = %s",
+                                                  (traitement_id,))
+                                              planning_details = await cursor.fetchall()
+
+                                      if not planning_details:
+                                          print("Aucun planning trouvé pour ce traitement.")
+                                          continue
+
+                                      print("Planning disponibles :")
+                                      for i, planning_detail in enumerate(planning_details):
+                                          print(f"{i + 1}. Planning ID : {planning_detail[0]}")
+
+                                      while True:
+                                          try:
+                                              choix_planning = int(
+                                                  input("Choisissez un planning (entrez le numéro) : ")) - 1
+                                              if 0 <= choix_planning < len(planning_details):
+                                                  planning_detail_id = planning_details[choix_planning][0]
+                                                  break
+                                              else:
+                                                  print("Choix invalide. Veuillez réessayer.")
+                                          except ValueError:
+                                              print("Entrée invalide. Veuillez entrer un numéro.")
+
+                                      motif = input("Motif du signalement : ")
+                                      type_signalement = input("Type de signalement (Avancement/Décalage) : ")
+
+                                      result = await create_signalement(pool, planning_detail_id, motif,
+                                                                        type_signalement)
+                                      print(f"Signalement créé avec l'ID : {result}")
+
+                                  elif operation == 'update':
+                                      signalement_id = int(input("ID du signalement à modifier : "))
+
+                                      # Récupérer le signalement existant
+                                      async with pool.acquire() as conn:
+                                          async with conn.cursor() as cursor:
+                                              await cursor.execute(
+                                                  "SELECT planning_detail_id, motif, type FROM Signalement WHERE signalement_id = %s",
+                                                  (signalement_id,))
+                                              signalement_existant = await cursor.fetchone()
+
+                                      if not signalement_existant:
+                                          print("Signalement non trouvé.")
+                                          continue
+
+                                      planning_detail_id_existant, motif_existant, type_existant = signalement_existant
+
+                                      # Demander à l'utilisateur de modifier les champs
+                                      planning_detail_id = int(input(
+                                          f"Nouveau planning ID ({planning_detail_id_existant}) : ") or planning_detail_id_existant)
+                                      motif = input(f"Nouveau motif ({motif_existant}) : ") or motif_existant
+                                      type_signalement = input(
+                                          f"Nouveau type de signalement ({type_existant}) : ") or type_existant
+
+                                      await update_signalement(pool, signalement_id, planning_detail_id, motif,
+                                                               type_signalement)
+                                      print("Signalement mis à jour.")
+
+
+                                  elif operation == 'read':
+                                      if table_name == "Signalement":
+                                          signalement_id = int(input("ID du signalement à lire : "))
+                                          signalement = await read_signalement(pool, signalement_id)
+                                          if signalement:
+                                              signalement_id, motif, type_signalement, planning_detail_id, traitement_id, date_debut, date_fin, type_traitement = signalement
+                                              print(f"Signalement ID: {signalement_id}")
+                                              print(f"Motif: {motif}")
+                                              print(f"Type: {type_signalement}")
+                                              print(f"Planning ID: {planning_detail_id}")
+                                              print(f"Traitement ID: {traitement_id}")
+                                              print(f"Type de traitement: {type_traitement}")
+                                              print(f"Date de début: {date_debut}")
+                                              print(f"Date de fin: {date_fin}")
+                                          else:
+                                              print("Signalement non trouvé.")
+                                  elif operation == 'delete':
+                                      signalement_id = int(input("ID du signalement à supprimer : "))
+                                      await delete_signalement(pool, signalement_id)
+                                      print("Signalement supprimé.")
                               except Exception as e:
                                   print(f"Erreur : {e}")
+
+
 
             except aiomysql.OperationalError as e:
                 print(f"Erreur de connexion à la base de données : {e}")

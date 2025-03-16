@@ -1,7 +1,3 @@
-import asyncio
-import aiomysql
-from datetime import date
-
 async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, duree, categorie):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:

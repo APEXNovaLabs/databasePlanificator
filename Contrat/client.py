@@ -1,5 +1,3 @@
-import asyncio
-import aiomysql
 from datetime import date
 
 async def obtenir_categories(pool, table_name, column_name):

@@ -508,6 +508,27 @@ async def main():
                                                                type_signalement)
                                       print("Signalement mis à jour.")
 
+
+                                  elif operation == 'read':
+                                      if table_name == "Signalement":
+                                          signalement_id = int(input("ID du signalement à lire : "))
+                                          signalement = await read_signalement(pool, signalement_id)
+                                          if signalement:
+                                              signalement_id, motif, type_signalement, planning_detail_id, traitement_id, date_debut, date_fin, type_traitement = signalement
+                                              print(f"Signalement ID: {signalement_id}")
+                                              print(f"Motif: {motif}")
+                                              print(f"Type: {type_signalement}")
+                                              print(f"Planning ID: {planning_detail_id}")
+                                              print(f"Traitement ID: {traitement_id}")
+                                              print(f"Type de traitement: {type_traitement}")
+                                              print(f"Date de début: {date_debut}")
+                                              print(f"Date de fin: {date_fin}")
+                                          else:
+                                              print("Signalement non trouvé.")
+                                  elif operation == 'delete':
+                                      signalement_id = int(input("ID du signalement à supprimer : "))
+                                      await delete_signalement(pool, signalement_id)
+                                      print("Signalement supprimé.")
                               except Exception as e:
                                   print(f"Erreur : {e}")
 

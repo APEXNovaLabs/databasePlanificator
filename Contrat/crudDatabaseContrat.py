@@ -1,6 +1,7 @@
 import asyncio
 import aiomysql
 from datetime import date
+from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
 
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
@@ -38,32 +39,6 @@ async def delete_client(pool, client_id):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("DELETE FROM Client WHERE client_id = %s", (client_id,))
-            await conn.commit()
-
-# Pour le contrat
-async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, categorie):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, categorie) VALUES (%s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, categorie))
-            await conn.commit()
-            return cur.lastrowid
-
-async def read_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            return await cur.fetchone()
-
-async def update_contrat(pool, contrat_id, client_id, date_contrat, date_debut, date_fin, categorie):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin = %s, categorie = %s WHERE contrat_id = %s", (client_id, date_contrat, date_debut, date_fin, categorie, contrat_id))
-            await conn.commit()
-
-async def delete_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Contrat WHERE contrat_id = %s", (contrat_id,))
             await conn.commit()
 
 # Pour la table traitement

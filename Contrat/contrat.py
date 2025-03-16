@@ -5,7 +5,7 @@ from datetime import date
 async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, categorie):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, categorie) VALUES (%s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, categorie))
+            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, duree, categorie) VALUES (%s, %s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, categorie))
             await conn.commit()
             return cur.lastrowid
 

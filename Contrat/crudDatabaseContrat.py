@@ -1,6 +1,7 @@
 import asyncio
 import aiomysql
 from datetime import date
+from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
 
 # Accès aux catégories
 async def obtenir_categories(pool, table_name, column_name):
@@ -13,58 +14,6 @@ async def obtenir_categories(pool, table_name, column_name):
                 return enum_str
             else:
                 return []
-
-async def create_client(pool, nom, prenom, email, telephone, adresse, categorie, axe):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Client (nom, prenom, email, telephone, adresse, date_ajout, categorie, axe) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (nom, prenom, email, telephone, adresse, date.today(), categorie, axe))
-            await conn.commit()
-            return cur.lastrowid  # Retourne l'ID du client créé
-
-
-async def read_client(pool, client_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Client WHERE client_id = %s", (client_id,))
-            return await cur.fetchone()
-
-async def update_client(pool, client_id, nom, prenom, email, telephone, adresse, categorie, axe):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Client SET nom = %s, prenom = %s, email = %s, telephone = %s, adresse = %s, categorie = %s, axe = %s WHERE client_id = %s", (nom, prenom, email, telephone, adresse, categorie, axe, client_id))
-            await conn.commit()
-
-async def delete_client(pool, client_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Client WHERE client_id = %s", (client_id,))
-            await conn.commit()
-
-# Pour le contrat
-async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin, categorie):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, categorie) VALUES (%s, %s, %s, %s, %s)", (client_id, date_contrat, date_debut, date_fin, categorie))
-            await conn.commit()
-            return cur.lastrowid
-
-async def read_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            return await cur.fetchone()
-
-async def update_contrat(pool, contrat_id, client_id, date_contrat, date_debut, date_fin, categorie):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin = %s, categorie = %s WHERE contrat_id = %s", (client_id, date_contrat, date_debut, date_fin, categorie, contrat_id))
-            await conn.commit()
-
-async def delete_contrat(pool, contrat_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("DELETE FROM Contrat WHERE contrat_id = %s", (contrat_id,))
-            await conn.commit()
 
 # Pour la table traitement
 
@@ -343,14 +292,11 @@ async def main():
             print("5. Retour au menu principal")
 
             choix_operation = input("Choisissez une opération (1-5) : ")
-
             if choix_operation == '5':
                 break
-
             if choix_operation not in ('1', '2', '3', '4'):
                 print("Choix d'opération invalide.")
                 continue
-
             operation = ['create', 'read', 'update', 'delete'][int(choix_operation) - 1]
             func = table_functions[choix_table][operation]
 

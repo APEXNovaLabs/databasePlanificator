@@ -112,10 +112,29 @@ async def main():
                 print(f"Historique: {historique}")
 
             elif choix == '2':
+                # Valide au cas où les autres élements sont actifs
                 historique_id = int(input("ID de l'historique à modifier: "))
                 contenu = input("Nouveau contenu: ")
                 date_traitement_str = input("Nouvelle date du traitement (AAAA-MM-JJ): ")
                 date_traitement = datetime.strptime(date_traitement_str, "%Y-%m-%d").date()
+
+            elif choix == '3':
+                historique_id = int(input("ID de l'historique à supprimer: "))
+                await delete_historique(pool, historique_id)
+                print("Historique supprimé.")
+
+            elif choix == '4':
+                traitement_id = int(input("ID du traitement pour afficher l'historique: "))
+                historiques = await get_historique_for_traitement(pool, traitement_id)
+                for historique in historiques:
+                    print(f"ID: {historique[0]}, Contenu: {historique[2]}, Date: {historique[3]}")
+
+            elif choix == '5':
+                client_id = int(input("ID du client pour afficher l'historique: "))
+                await afficher_historique_client(pool, client_id)
+
+            elif choix == '6':
+                break
 
     except aiomysql.OperationalError as e:
         print(f"Erreur de connexion à la base de données: {e}")

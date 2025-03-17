@@ -10,8 +10,6 @@ CREATE TABLE PlanificationMensuelle (
     FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
-
-
 -- Pour la table remarque
 CREATE TABLE Remarque (
     remarque_id INT PRIMARY KEY AUTO_INCREMENT,

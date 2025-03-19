@@ -1,4 +1,4 @@
-- Effacer une table dans Planificator
+-- Effacer une table dans Planificator
 DROP TABLE IF EXISTS Account;
 DROP TABLE IF EXISTS Contrat;
 DROP TABLE IF EXISTS Traitement;
@@ -118,7 +118,7 @@ CREATE TABLE Client (
                         adresse VARCHAR(255) NOT NULL,
                         date_ajout DATE NOT NULL,
                         categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
-                        axe VARCHAR(255) NOT NULL
+                        axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL
 );
 
 CREATE TABLE Contrat (
@@ -209,9 +209,9 @@ CREATE TABLE Historique (
 
 -- Table Avancement
 CREATE TABLE Signalement (
-                            signalement_id INT PRIMARY KEY AUTO_INCREMENT,
-                            planning_detail_id INT NOT NULL,
-                            motif TEXT NOT NULL,
-                            type ENUM ('Avancement', 'Décalage') NOT NULL,
-                            FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
+                             signalement_id INT PRIMARY KEY AUTO_INCREMENT,
+                             planning_detail_id INT NOT NULL,
+                             motif TEXT NOT NULL,
+                             type ENUM ('Avancement', 'Décalage') NOT NULL,
+                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );

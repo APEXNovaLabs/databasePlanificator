@@ -139,7 +139,8 @@ SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (
                                 id_type_traitement INT PRIMARY KEY AUTO_INCREMENT,
-                                typeTraitement ENUM('Dératisation', 'Désinfection', 'Désinsectisation', 'Fumigation', 'Nettoyage industriel') NOT NULL
+                                categorieTraitement ENUM ('AT: Anti termites', 'PC', 'NI: Nettoyage Industriel', 'RO: Ramassage Ordures'),
+                                typeTraitement ENUM('Dératisation (PC)', 'Désinfection (PC)', 'Désinsectisation (PC)', 'Fumigation (PC)', 'Nettoyage industriel (NI)', 'Anti termites (AT)', 'Ramassage ordure') NOT NULL
 );
 
 

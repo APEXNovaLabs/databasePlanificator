@@ -182,6 +182,7 @@ CREATE TABLE Facture (
                          planning_detail_id INT NOT NULL,
                          montant INT NOT NULL,
                          date_traitement DATE NOT NULL,
+                         etat ENUM('Payé', 'Non payé') NOT NULL DEFAULT 'Non payé',
                          axe VARCHAR(255) NOT NULL,
                          remarque TEXT,
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
@@ -192,8 +193,10 @@ CREATE TABLE Remarque (
                           remarque_id INT PRIMARY KEY AUTO_INCREMENT,
                           client_id INT NOT NULL,
                           planning_detail_id INT NOT NULL,
+                          facture_id INT,
                           contenu TEXT NOT NULL,
                           date_remarque TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE SET NULL,
                           FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE,
                           FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );

@@ -2,19 +2,35 @@ import asyncio
 import aiomysql
 
 async def regrouper_traitements():
-    """Récupère et affiche les traitements regroupés par catégorie."""
+    """Here xD: Récupère et affiche les traitements regroupés par catégorie."""
+    host = input("Hôte de la base de données (par défaut : localhost) : ")
+    if not host:
+        host = "localhost"
 
-    # Configuration de la connexion à la base de données
-    conn = await aiomysql.connect(
-        host="votre_hôte",
-        user="votre_utilisateur",
-        password="votre_mot_de_passe",
-        db="Planificator",
-        autocommit=True,  # Important pour les requêtes qui modifient les données
-    )
+    port_str = input("Port de la base de données (par défaut : 3306) : ")
+    if port_str:
+        try:
+            port = int(port_str)
+        except ValueError:
+            print("Port invalide. Utilisation du port par défaut 3306.")
+            port = 3306
+    else:
+        port = 3306
+
+    user = input("Nom d'utilisateur : ")
+    password = input("Mot de passe : ")
+    database = input("Nom de la base de données : ")
 
     try:
-        cur = await conn.cursor()
+        # Créer le pool de connexions
+        pool = await aiomysql.create_pool(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            db=database,
+            autocommit=True
+        )
 
         # Requête SQL pour regrouper les traitements par catégorie
         query = """
@@ -27,19 +43,21 @@ async def regrouper_traitements():
             categorieTraitement;
         """
 
-        await cur.execute(query)
+        await pool.execute(query)
 
         # Récupération des résultats
-        resultats = await cur.fetchall()
+        resultats = await pool.fetchall()
 
         # Affichage des résultats
         for categorie, traitements in resultats:
             print(f"Catégorie: {categorie}, Traitements: {traitements}")
 
+
     finally:
-        # Fermeture du curseur et de la connexion
-        await cur.close()
-        conn.close()
+        if pool:
+            pool.close()
+            await pool.wait_closed()
+
 
 # Exécution de la fonction asynchrone
 asyncio.run(regrouper_traitements())

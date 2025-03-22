@@ -17,6 +17,7 @@
 
 - **Account:** Pour les scripts en Python de la table Account
 - **Contrat:** Pour les scripts en Python et aussi SQL de l'ensemble de la DB du projet
-- **Planning:** Pour les plannings (Correctifs)
+- **Contrat/Fonctionnalités:** Pour les divers fonctionnalités 
+- **PlanningOld:** Pour les anciens scripts du plannings (Correctifs)
 - **scriptSQL:** Contient le script SQL de l'ensemble du projet Planificator (Account exclus)
 

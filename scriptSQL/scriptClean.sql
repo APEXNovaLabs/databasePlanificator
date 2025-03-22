@@ -127,6 +127,7 @@ CREATE TABLE Contrat (
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin VARCHAR(50),
+                         statut_contrat ENUM ('Actif', 'Terminé') NOT NULL DEFAULT 'Actif',
                          duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
@@ -161,6 +162,8 @@ CREATE TABLE Planning (
                           mois_debut VARCHAR(20) NOT NULL,
                           mois_fin VARCHAR(20) NOT NULL,
                           mois_pause VARCHAR(20),
+                          duree_traitement INT NOT NULL DEFAULT 12,
+                          unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance ENUM ('Mensuel', 'Hebdomadaire', '2 mois', '3 mois', '4 mois', '6 mois') NOT NULL,
                           date_fin_planification DATE,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE

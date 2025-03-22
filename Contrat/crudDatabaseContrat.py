@@ -126,14 +126,14 @@ async def main():
                         if categorie:
                             print("Catégories disponibles:")
                             for i, categories_client in enumerate(categorie):
-                                print(f"{i + 1}. {categorie}")
+                                print(f"{i + 1}. {categories_client}")
 
                             while True:
                                 try:
                                     choix = int(input("Choisissez une catégorie (entrez le numéro): ")) - 1
                                     if 0 <= choix < len(categorie):
-                                        categorie_choisie = categories_client[choix]
-                                        break  # Sortir de la boucle si le choix est valide
+                                        categorie_choisie = categorie[choix]
+                                        break
                                     else:
                                         print("Choix invalide. Veuillez réessayer.")
                                 except ValueError:
@@ -155,8 +155,11 @@ async def main():
 
                     elif table_name == "Contrat":
                         client_id = int(input("ID du client : "))
-                        date_contrat = input("Date du contrat (AAAA-MM-JJ) : ")
-                        date_debut = input("Date de début (AAAA-MM-JJ) : ")
+                        date_contrat_str = input("Date du contrat (AAAA-MM-JJ) : ")
+                        date_contrat = datetime.strptime(date_contrat_str, '%Y-%m-%d').date()
+                        date_debut_str = input("Date de début (AAAA-MM-JJ) : ")
+                        date_debut = datetime.strptime(date_debut_str, '%Y-%m-%d').date()
+
                         # Sélection de la catégorie de durée du contrat
                         if categories_contrat_duree:
                             print("Catégories de durée disponibles:")
@@ -175,10 +178,16 @@ async def main():
                         else:
                             print("Aucune catégorie de durée trouvée.")
                             duree_contrat_choisie = input("Entrez la catégorie de durée manuellement : ")
-                        if duree_contrat_choisie != "Indeterminée":
-                            date_fin = input("Date de fin (AAAA-MM-JJ) : ")
+
+                        if duree_contrat_choisie == "Déterminée":
+                            date_fin_contrat_str = input("Date de fin (AAAA-MM-JJ) : ")
+                            date_fin_contrat = datetime.strptime(date_fin_contrat_str, '%Y-%m-%d').date()
+                            duree_contrat = int(input("Durée du contrat en mois : "))
                         else:
-                            date_fin = None  # ou une valeur par défaut, par exemple '0000-00-00'
+                            date_fin_contrat = None
+                            duree_contrat = None
+
+                        # Sélection de la catégorie de type de contrat
                         if categories_contrat_type:
                             print("Catégories de type disponibles:")
                             for i, categorie_type_contrat in enumerate(categories_contrat_type):
@@ -196,8 +205,10 @@ async def main():
                         else:
                             print("Aucune catégorie de type trouvée.")
                             categorie_contrat_choisie = input("Entrez la catégorie de type manuellement : ")
-                        result = await func(pool, client_id, date_contrat, date_debut, date_fin, duree_contrat_choisie,
-                                            categorie_contrat_choisie)
+
+                        result = await func(pool, client_id, date_contrat, date_debut, date_fin_contrat,
+                                            duree_contrat_choisie,
+                                            categorie_contrat_choisie, duree_contrat)
 
                     elif table_name == "Traitement":
                         contrat_id = int(input("ID du contrat : "))
@@ -238,7 +249,7 @@ async def main():
                                                    id_type_traitement)
                                     else:
                                         print(f"Type de traitement non trouvé : {type_traitement_choisi}")
-                        result = await func(pool, contrat_id, type_traitement)
+                        result = await func(pool, contrat_id, id_type_traitement)
 
                     elif table_name == "Planning":
                         # Récupérer les traitements associés au contrat

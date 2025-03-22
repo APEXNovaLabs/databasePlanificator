@@ -127,6 +127,8 @@ CREATE TABLE Contrat (
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin VARCHAR(50),
+                         statut_contrat ENUM ('Actif', 'Terminé') NOT NULL DEFAULT 'Actif',
+                         duree_contrat INT,
                          duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
@@ -158,11 +160,16 @@ CREATE TABLE Traitement (
 CREATE TABLE Planning (
                           planning_id INT PRIMARY KEY AUTO_INCREMENT,
                           traitement_id INT NOT NULL,
-                          mois_debut VARCHAR(20) NOT NULL,
-                          mois_fin VARCHAR(20) NOT NULL,
-                          mois_pause VARCHAR(20),
-                          redondance ENUM ('Mensuel', 'Hebdomadaire', '2 mois', '3 mois', '4 mois', '6 mois') NOT NULL,
+                          date_debut_planification DATE,
+                          mois_debut INT,
+                          mois_fin INT,
+                          mois_pause INT,
+                          duree_traitement INT NOT NULL DEFAULT 12,
+                          unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
+                          redondance INT NOT NULL,
                           date_fin_planification DATE,
+                          planning_detail_id INT,
+                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
@@ -183,7 +190,7 @@ CREATE TABLE Facture (
                          montant INT NOT NULL,
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé') NOT NULL DEFAULT 'Non payé',
-                         axe VARCHAR(255) NOT NULL,
+                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL,
                          remarque TEXT,
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
@@ -206,8 +213,12 @@ CREATE TABLE Remarque (
 CREATE TABLE Historique (
                             historique_id INT PRIMARY KEY AUTO_INCREMENT,
                             facture_id INT NOT NULL,
+                            planning_detail_id INT,
+                            signalement_id INT,
                             date_historique TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             contenu TEXT NOT NULL,
+                            FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE SET NULL,
+                            FOREIGN KEY (signalement_id) REFERENCES Signalement(signalement_id) ON DELETE SET NULL,
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
 );
 

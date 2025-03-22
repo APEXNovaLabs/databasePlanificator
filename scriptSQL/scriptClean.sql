@@ -160,6 +160,7 @@ CREATE TABLE Traitement (
 CREATE TABLE Planning (
                           planning_id INT PRIMARY KEY AUTO_INCREMENT,
                           traitement_id INT NOT NULL,
+                          date_debut_planification DATE,
                           mois_debut INT,
                           mois_fin INT,
                           mois_pause INT,

@@ -165,7 +165,7 @@ CREATE TABLE Planning (
                           mois_pause INT,
                           duree_traitement INT NOT NULL DEFAULT 12,
                           unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
-                          redondance ENUM ('Mensuel', 'Hebdomadaire', '2 mois', '3 mois', '4 mois', '6 mois') NOT NULL,
+                          redondance INT NOT NULL,
                           date_fin_planification DATE,
                           planning_detail_id INT,
                           FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE,

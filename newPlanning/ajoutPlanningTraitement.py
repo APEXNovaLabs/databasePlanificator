@@ -34,6 +34,13 @@ async def ajouter_planning_traitement(pool, traitement_id, redondance, date_debu
                     VALUES (%s, %s, 'À venir', 'Traitement')
                 """, (planning_id, date_planification))
 
+                planning_detail_id = cur.lastrowid
+
+                # Mettre à jour la table Traitement avec planning_detail_id
+                await cur.execute("""
+                    UPDATE Traitement SET planning_detail_id = %s WHERE traitement_id = %s
+                """, (planning_detail_id, traitement_id))
+
                 # Calculer la prochaine date de planification
                 if redondance == 1:  # Hebdomadaire
                     date_planification += timedelta(weeks=1)

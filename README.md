@@ -21,3 +21,6 @@
 - **PlanningOld:** Pour les anciens scripts du plannings (Correctifs)
 - **scriptSQL:** Contient le script SQL de l'ensemble du projet Planificator (Account exclus)
 
+### Notice
+
+- Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données

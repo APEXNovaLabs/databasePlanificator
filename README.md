@@ -13,14 +13,38 @@
   - Pour l'interface: [Aina Maminirina](https://github.com/AinaMaminirina18)
 - Final Version: [Planificator 1.0]()
 
-### Structuration des dossiers
+### 📂 Structuration des dossiers
 
-- **Account:** Pour les scripts en Python de la table Account
-- **Contrat:** Pour les scripts en Python et aussi SQL de l'ensemble de la DB du projet
-- **Contrat/Fonctionnalités:** Pour les divers fonctionnalités 
-- **PlanningOld:** Pour les anciens scripts du plannings (Correctifs)
-- **scriptSQL:** Contient le script SQL de l'ensemble du projet Planificator (Account exclus)
+```
+Database/
+├──  Acccount/                          # Pour les scripts des comptes dans le logiciel (Requête CRUD)
+     ├── accountAvecHash.py             # Script avec hashage du mot de passe pour chaque compte
+     └── accountSansHash.py             # Script sans hashage du mot de passe pour chaque compte
+├──  Contrat/                           # Pour les scripts sur l'ensemble de la table Planificator (Sans Account)
+     ├── fonctionnalités/               # Les principaux fonctionnalités dans chaque instance
+         ├── Planning/                  # Fonctionnalités sur planning (Affichage, Ajout du détails pour chaque planning, Mise à jour des détails de planification)
+         ├── contrat/                   # Fonctionnalités sur le contrat (Choix sur la continuité du contrat)
+         ├── remarque/                  # Fonctionnalités sur les remarques (Ajout d'une facture à chaque enregistrement de remarque)
+         └── triage/                    # Triage: Triage par ordre alphabetique, Recherche de contrat, Triage des traitements par catégorie, triage des traitements spécifiques à chaque client
+     ├── regroupeTraitementCat/         # Scripts de regroupement des traitements par catégories (Script Python et SQL)
+     ├── client.py                      # Requête CRUD pour la table Client
+     ├── codeObsolète.py                # Requête CRUD pour l'ancienne table Historique
+     ├── contrat.py                     # Requête CRUD pour la table Contrat
+     ├── crudDatabasePlanificator.py    # Programme principale 
+     ├── facture.py                     # Requête CRUD pour la facture Facture
+     ├── historique.py                  # Requête CRUD pour la table Historique
+     ├── planning.py                    # Requête CRUD pour la table Planning et PlanningDetails
+     ├── signalement.py                 # Requête CRUD pour la table Signalement 
+     └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
+├──  scriptSQL/
+     ├── scriptClean                    # Script (SQL) test pour la base de données du projet
+     └── scriptClean.sql                # Script finale de la base de données
+└──  README.md                          # Documentation
+```
 
-### Notice
+### 📝 Notice
 
-- Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données
+Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données
+
+### 📃 Licence
+Ce projet est libre de droits et peut être utilisé pour des projets personnels.

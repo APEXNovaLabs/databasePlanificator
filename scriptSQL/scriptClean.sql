@@ -136,7 +136,7 @@ CREATE TABLE Contrat (
 
 
 -- Dans le code, lors de l'ajout du contrat:
-SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+-- SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
 
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (
@@ -168,8 +168,7 @@ CREATE TABLE Planning (
                           unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
-                          planning_detail_id INT,
-                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE,
+                          planning_detail_id INT NOT NULL,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
@@ -182,6 +181,11 @@ CREATE TABLE PlanningDetails (
                                  element_planification VARCHAR(20) NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
+
+
+-- Ajouter la clé étrangère à Planning après que PlanningDetails existe
+ALTER TABLE Planning
+ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
 
 -- Table Facture
 CREATE TABLE Facture (

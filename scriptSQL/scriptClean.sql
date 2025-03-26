@@ -150,9 +150,9 @@ CREATE TABLE TypeTraitement (
 CREATE TABLE Traitement (
                             traitement_id INT PRIMARY KEY AUTO_INCREMENT,
                             contrat_id INT NOT NULL,
-                            id_type_traitement INT NOT NULL,  -- Clé étrangère vers TypeTraitement
+                            id_type_traitement INT NOT NULL, 
                             FOREIGN KEY (contrat_id) REFERENCES Contrat(contrat_id) ON DELETE CASCADE,
-                            FOREIGN KEY (id_type_traitement) REFERENCES TypeTraitement(id_type_traitement) ON DELETE CASCADE -- Ajout de la contrainte pour la clé étrangère
+                            FOREIGN KEY (id_type_traitement) REFERENCES TypeTraitement(id_type_traitement) ON DELETE CASCADE 
 );
 
 
@@ -182,12 +182,13 @@ CREATE TABLE PlanningDetails (
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
 
-
 -- Ajouter la clé étrangère à Planning après que PlanningDetails existe
+-- Pour résoudre le problème de clé étrangère et la dépendance circulaire au niveau des deux tables
 ALTER TABLE Planning
 ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
 
--- Table Facture
+
+-- Table Facture (Pour la facturation de chaque service effectué)
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          planning_detail_id INT NOT NULL,
@@ -199,7 +200,7 @@ CREATE TABLE Facture (
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 
--- Table Remarque
+-- Table Remarque (Pour confirmer si une traitement a été effectuée)
 CREATE TABLE Remarque (
                           remarque_id INT PRIMARY KEY AUTO_INCREMENT,
                           client_id INT NOT NULL,
@@ -212,8 +213,17 @@ CREATE TABLE Remarque (
                           FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 
+-- Table Signalement (Pour un signalement d'avancement ou de décalage)
+CREATE TABLE Signalement (
+                             signalement_id INT PRIMARY KEY AUTO_INCREMENT,
+                             planning_detail_id INT NOT NULL,
+                             motif TEXT NOT NULL,
+                             type ENUM ('Avancement', 'Décalage') NOT NULL,
+                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
+);
 
--- Table Historique
+
+-- Table Historique (Historique des traitements effectués)
 CREATE TABLE Historique (
                             historique_id INT PRIMARY KEY AUTO_INCREMENT,
                             facture_id INT NOT NULL,
@@ -226,11 +236,3 @@ CREATE TABLE Historique (
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
 );
 
--- Table Avancement
-CREATE TABLE Signalement (
-                             signalement_id INT PRIMARY KEY AUTO_INCREMENT,
-                             planning_detail_id INT NOT NULL,
-                             motif TEXT NOT NULL,
-                             type ENUM ('Avancement', 'Décalage') NOT NULL,
-                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
-);

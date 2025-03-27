@@ -135,8 +135,8 @@ CREATE TABLE Contrat (
 );
 
 
--- Dans le code, lors de l'ajout du contrat:
-SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+# Dans le code, lors de l'ajout du contrat:
+# SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
 
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (

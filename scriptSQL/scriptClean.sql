@@ -1,3 +1,9 @@
+/*
+    Auteur: Josoa (josoavj sur GitHub)
+    Ce script est la source de la base de données du projet Planificator
+    Veuillez vous réferer à la documentation ou envoyer un mail à l'auteur si vous avez besoin d'aide
+*/
+
 -- Effacer une table dans Planificator
 DROP TABLE IF EXISTS Account;
 DROP TABLE IF EXISTS Contrat;
@@ -31,6 +37,14 @@ CREATE TABLE Account (
                          date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Date de création du compte
                          UNIQUE (nom, prenom)                -- Contrainte d'unicité sur le nom et prénom
 );
+
+/*
+    Pour la table Account:
+    - Il est recommandé d'utiliser un mot de passe crypté: veuillez crypter votre mot de passe en fonction du techno ou langage utilisé
+    - Le mot de passe ne doit pas contenir des informations sensibles (Informations personnelles)
+    - Un seul compte Administrateur est requis.
+    - Seul l'administrateur qui possède le droit de supprimer des comptes dans la base de données.
+*/
 
 -- Compte administrateur unique
 DELIMITER $$
@@ -108,6 +122,21 @@ END$$
 
 DELIMITER ;
 
+/*
+    Début du script pour l'ensemble des tables utilisées dans Planificator
+    Structuration:
+    - Table Client: Pour les informations sur les clients
+    - Table Contrat: Pour les informations sur les contrats des clients
+    - Table TypeTraitement: Pour les types de traitements prévus pour les clients
+    - Table Traitement: Pour les informations sur chaque service choisit par un client dans son contrat
+    - Table Planning: Pour les informations sur le planning de chaque service dedié à un client
+    - Table PlanningDetails: Pour les détails de chaque planning
+    - Table Facture: Pour la facturation de chaque service du client
+    - Table Remarque: Ajout d'un remarque et confirmation si un traitement est effectué
+    - Table Signalement: Signalement pour un avancement ou décalage
+    - Table Historique: Historique des traitements pour chaque client
+*/
+
 -- Table Client
 CREATE TABLE Client (
                         client_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -120,6 +149,10 @@ CREATE TABLE Client (
                         categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL
 );
+/*
+    Dans le code back-end:
+    Si ce n'est pas un particulier alors prénom change en Responsable
+*/
 
 CREATE TABLE Contrat (
                          contrat_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -134,9 +167,12 @@ CREATE TABLE Contrat (
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
 );
 
-
--- Dans le code, lors de l'ajout du contrat:
--- SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+/*
+    Cette partie est à décommenter si vous voulez calculer la duréee du contrat.
+    L'opération se fait en fonction de la date de fin et date de début du contrat
+    Dans le code, lors de l'ajout du contrat:
+    SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+*/
 
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (
@@ -168,7 +204,7 @@ CREATE TABLE Planning (
                           unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
-                          planning_detail_id INT NOT NULL,
+                          # planning_detail_id INT NOT NULL,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
@@ -177,16 +213,19 @@ CREATE TABLE PlanningDetails (
                                  planning_detail_id INT PRIMARY KEY AUTO_INCREMENT,
                                  planning_id INT NOT NULL,
                                  date_planification DATE NOT NULL,
+                                 mois VARCHAR(20) NOT NULL ,
                                  statut ENUM ('Effectué', 'À venir') NOT NULL,
-                                 element_planification VARCHAR(20) NOT NULL,
+                                 # element_planification VARCHAR(20) NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
 
--- Ajouter la clé étrangère à Planning après que PlanningDetails existe
--- Pour résoudre le problème de clé étrangère et la dépendance circulaire au niveau des deux tables
-ALTER TABLE Planning
-ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
+/*
+    Inutilisée pour des raisons de dépendance circulaire au niveau des deux table
+    Ajouter la clé étrangère à Planning après que PlanningDetails existes
 
+    ALTER TABLE Planning
+    ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
+*/
 
 -- Table Facture (Pour la facturation de chaque service effectué)
 CREATE TABLE Facture (
@@ -236,3 +275,6 @@ CREATE TABLE Historique (
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
 );
 
+/*
+    Historique regroupe toutes les informations utiles pour chaque traitement effectué
+*/

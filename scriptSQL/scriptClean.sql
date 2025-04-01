@@ -134,9 +134,12 @@ CREATE TABLE Contrat (
                          FOREIGN KEY (client_id) REFERENCES Client(client_id)
 );
 
-
--- Dans le code, lors de l'ajout du contrat:
--- SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+/*
+Cette partie est à décommenter si vous voulez calculer la duréee du contrat.
+L'opération se fait en fonction de la date de fin et date de début du contrat
+Dans le code, lors de l'ajout du contrat:
+SELECT *, DATEDIFF(date_fin, date_debut) AS duree FROM Contrat;
+*/
 
 -- Type de traitement utilisant enum
 CREATE TABLE TypeTraitement (
@@ -168,7 +171,7 @@ CREATE TABLE Planning (
                           unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
-                          planning_detail_id INT NOT NULL,
+                          # planning_detail_id INT NOT NULL,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
@@ -177,16 +180,20 @@ CREATE TABLE PlanningDetails (
                                  planning_detail_id INT PRIMARY KEY AUTO_INCREMENT,
                                  planning_id INT NOT NULL,
                                  date_planification DATE NOT NULL,
+                                 mois VARCHAR(20) NOT NULL ,
                                  statut ENUM ('Effectué', 'À venir') NOT NULL,
-                                 element_planification VARCHAR(20) NOT NULL,
+                                 # element_planification VARCHAR(20) NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
 
--- Ajouter la clé étrangère à Planning après que PlanningDetails existe
--- Pour résoudre le problème de clé étrangère et la dépendance circulaire au niveau des deux tables
+/*
+Inutilisée pour des raisons de dépendance circulaire au niveau des deux table
+Ajouter la clé étrangère à Planning après que PlanningDetails existes
+
 ALTER TABLE Planning
 ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
 
+*/
 
 -- Table Facture (Pour la facturation de chaque service effectué)
 CREATE TABLE Facture (

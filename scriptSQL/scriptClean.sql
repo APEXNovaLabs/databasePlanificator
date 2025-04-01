@@ -149,6 +149,10 @@ CREATE TABLE Client (
                         categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL
 );
+/*
+    Dans le code back-end:
+    Si ce n'est pas un particulier alors prénom change en Responsable
+*/
 
 CREATE TABLE Contrat (
                          contrat_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -271,3 +275,6 @@ CREATE TABLE Historique (
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
 );
 
+/*
+    Historique regroupe toutes les informations utiles pour chaque traitement effectué
+*/

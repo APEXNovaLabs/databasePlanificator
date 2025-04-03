@@ -86,8 +86,7 @@ async def get_client_info_with_treatment_count(host: str, port: int, user: str, 
         if cursor:
             await cursor.close()
         if conn:
-            conn.close()
-
+            await conn.wait_closed()
 async def main():
     host, port, user, password, database = await get_db_credentials()
     client_id_a_rechercher = await get_client_id_to_search()

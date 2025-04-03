@@ -235,7 +235,6 @@ CREATE TABLE Facture (
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé') NOT NULL DEFAULT 'Non payé',
                          axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL,
-                         remarque TEXT,
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 

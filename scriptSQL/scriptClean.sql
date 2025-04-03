@@ -122,6 +122,20 @@ END$$
 
 DELIMITER ;
 
+-- Empêcher la suppression du dernier compte administrateur présent dans la base de données
+DELIMITER $$
+
+CREATE TRIGGER avant_suppression_compte_administrateur
+    BEFORE DELETE ON Account
+    FOR EACH ROW
+BEGIN
+    IF OLD.type_compte = 'Administrateur' AND (SELECT COUNT(*) FROM Account WHERE type_compte = 'Administrateur') = 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La suppression du dernier compte Administrateur est interdite.';
+    END IF;
+END$$
+
+DELIMITER ;
+
 /*
     Début du script pour l'ensemble des tables utilisées dans Planificator
     Structuration:

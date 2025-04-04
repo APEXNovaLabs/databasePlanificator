@@ -24,7 +24,7 @@ Database/
      ├── fonctionnalités/               # Les principaux fonctionnalités dans chaque instance
          ├── Planning/                  # Fonctionnalités sur planning (Affichage, Ajout du détails pour chaque planning, Mise à jour des détails de planification)
          ├── contrat/                   # Fonctionnalités sur le contrat (Choix sur la continuité du contrat)
-         ├── infoClient                 # Option de sélection d'un client et affichage des traitements assignés
+         ├── infoClient                 # Option de sélection des clients et affichage des traitements assignés
          ├── remarque/                  # Fonctionnalités sur les remarques (Ajout d'une facture à chaque enregistrement de remarque)
          └── triage/                    # Triage: Triage par ordre alphabetique, Recherche de contrat, Triage des traitements par catégorie, triage des traitements spécifiques à chaque client
      ├── regroupeTraitementCat/         # Scripts de regroupement des traitements par catégories (Script Python et SQL)
@@ -37,7 +37,7 @@ Database/
      ├── planning.py                    # Requête CRUD pour la table Planning et PlanningDetails
      ├── signalement.py                 # Requête CRUD pour la table Signalement 
      └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
-├──  scriptSQL/
+├──  scriptSQL/                         # Script SQL pour la base de données
      └── scriptClean.sql                # Script finale de la base de données
 └──  README.md                          # Documentation
 ```

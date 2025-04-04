@@ -2,7 +2,6 @@ import asyncio
 import aiomysql
 
 async def get_db_credentials():
-    """Demande à l'utilisateur les informations de connexion à la base de données."""
     host = input("Entrez l'adresse du serveur MySQL (par exemple, localhost): ")
     port_str = input("Entrez le port du serveur MySQL (par défaut: 3306): ")
     try:

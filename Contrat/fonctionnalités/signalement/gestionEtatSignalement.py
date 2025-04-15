@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 async def get_db_credentials():
-    """Demande à l'utilisateur les informations de connexion à la base de données."""
+    """
+    Demande à l'utilisateur les informations de connexion à la base de données.
+    """
     host = input("Entrez l'adresse du serveur MySQL (par exemple, localhost): ")
     port_str = input("Entrez le port du serveur MySQL (par défaut: 3306): ")
     try:
@@ -153,17 +155,18 @@ async def get_option_choix():
     Demande à l'utilisateur de choisir comment gérer le planning.
 
     Returns:
-        Le choix de l'utilisateur (1 ou 2), ou None en cas d'erreur.
+        Le choix de l'utilisateur (1, 2 ou 3), ou None en cas d'erreur.
     """
     while True:
         print("\nChoisissez comment gérer le planning :")
         print("  1. Garder l'état actuel du planning (ajuster uniquement le statut)")
         print("  2. Changer le planning (modifier les dates des traitements futurs)")
-        choix = input("Entrez votre choix (1 ou 2): ")
-        if choix in ('1', '2'):
+        print("  3. Annuler l'opération")
+        choix = input("Entrez votre choix (1, 2 ou 3): ")
+        if choix in ('1', '2', '3'):
             return int(choix)
         else:
-            print("Choix invalide. Veuillez entrer 1 ou 2.")
+            print("Choix invalide. Veuillez entrer 1, 2 ou 3.")
 
 async def handle_option_1(conn, planning_details):
     """
@@ -330,6 +333,10 @@ async def main():
             await handle_option_1(conn, planning_details)
         elif choix == 2:
             await handle_option_2(conn, planning_data)
+        elif choix == 3:
+            print("Opération annulée.")
+        else:
+            print("Choix invalide. Opération annulée.")
 
         print("Opération terminée.")
 

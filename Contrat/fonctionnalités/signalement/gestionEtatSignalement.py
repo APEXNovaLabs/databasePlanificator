@@ -214,12 +214,7 @@ async def handle_option_1(conn, planning_details):
         await conn.commit()
         print("Statut du détail du planning mis à jour.")
 
-        if nouveau_statut == 'Décalage':
-            motif = input("Entrez le motif du décalage: ")
-            sql_insert_signalement = "INSERT INTO Signalement (planning_detail_id, motif, type) VALUES (%s, %s, %s)"
-            await cursor.execute(sql_insert_signalement, (detail_id, motif, 'Décalage'))
-            await conn.commit()
-            print("Signalement de décalage enregistré.")
+# Removed unreachable condition and associated code block for 'Décalage'.
 
     except aiomysql.Error as e:
         print(f"Erreur lors de la mise à jour du statut : {e}")

@@ -178,7 +178,7 @@ CREATE TABLE Contrat (
                          duree_contrat INT DEFAULT NULL,
                          duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,
-                         FOREIGN KEY (client_id) REFERENCES Client(client_id)
+                         FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE
 );
 
 /*
@@ -218,7 +218,6 @@ CREATE TABLE Planning (
                           unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
-                          # planning_detail_id INT NOT NULL,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
 );
 
@@ -229,7 +228,6 @@ CREATE TABLE PlanningDetails (
                                  date_planification DATE NOT NULL,
                                  mois VARCHAR(20) NOT NULL ,
                                  statut ENUM ('Effectué', 'À venir') NOT NULL,
-                                 # element_planification VARCHAR(20) NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
 

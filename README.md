@@ -38,7 +38,7 @@ Database/
      ├── signalement.py                 # Requête CRUD pour la table Signalement 
      └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
 ├──  scriptSQL/                         # Script SQL pour la base de données
-     └── scriptClean.sql                # Script finale de la base de données
+     └── Planificator.sql                # Script finale de la base de données
 └──  README.md                          # Documentation
 ```
 

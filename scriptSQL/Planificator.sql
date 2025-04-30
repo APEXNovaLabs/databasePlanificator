@@ -213,9 +213,7 @@ CREATE TABLE Planning (
                           date_debut_planification DATE,
                           mois_debut INT,
                           mois_fin INT,
-                          mois_pause INT,
                           duree_traitement INT NOT NULL DEFAULT 12,
-                          unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
@@ -226,7 +224,6 @@ CREATE TABLE PlanningDetails (
                                  planning_detail_id INT PRIMARY KEY AUTO_INCREMENT,
                                  planning_id INT NOT NULL,
                                  date_planification DATE NOT NULL,
-                                 mois VARCHAR(20) NOT NULL ,
                                  statut ENUM ('Effectué', 'À venir') NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );

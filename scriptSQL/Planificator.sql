@@ -285,4 +285,5 @@ CREATE TABLE Historique (
 
 /*
     Historique regroupe toutes les informations utiles pour chaque traitement effectué
+    Modifié et corrigé le 30 Avril 2025
 */

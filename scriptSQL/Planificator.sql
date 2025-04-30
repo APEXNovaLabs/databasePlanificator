@@ -4,20 +4,6 @@
     Veuillez vous réferer à la documentation ou envoyer un mail à l'auteur si vous avez besoin d'aide
 */
 
--- Effacer une table dans Planificator
-DROP TABLE IF EXISTS Account;
-DROP TABLE IF EXISTS Contrat;
-DROP TABLE IF EXISTS Traitement;
-DROP TABLE IF EXISTS TypeTraitement;
-DROP TABLE IF EXISTS Client;
-DROP TABLE IF EXISTS Facture;
-DROP TABLE IF EXISTS Historique;
-DROP TABLE IF EXISTS Planning;
-DROP TABLE IF EXISTS PlanningDetails;
-DROP TABLE IF EXISTS Signalement;
-DROP TABLE IF EXISTS Remarque;
-
-
 -- Supprimer complètement la base de données
 DROP DATABASE IF EXISTS Planificator;
 
@@ -213,9 +199,7 @@ CREATE TABLE Planning (
                           date_debut_planification DATE,
                           mois_debut INT,
                           mois_fin INT,
-                          mois_pause INT,
                           duree_traitement INT NOT NULL DEFAULT 12,
-                          unite_duree ENUM ('mois', 'années') NOT NULL DEFAULT 'mois',
                           redondance INT NOT NULL,
                           date_fin_planification DATE,
                           FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id) ON DELETE CASCADE
@@ -226,7 +210,6 @@ CREATE TABLE PlanningDetails (
                                  planning_detail_id INT PRIMARY KEY AUTO_INCREMENT,
                                  planning_id INT NOT NULL,
                                  date_planification DATE NOT NULL,
-                                 mois VARCHAR(20) NOT NULL ,
                                  statut ENUM ('Effectué', 'À venir') NOT NULL,
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
@@ -288,4 +271,5 @@ CREATE TABLE Historique (
 
 /*
     Historique regroupe toutes les informations utiles pour chaque traitement effectué
+    Modifié et corrigé le 30 Avril 2025
 */

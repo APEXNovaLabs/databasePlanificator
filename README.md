@@ -38,7 +38,7 @@ Database/
      ├── signalement.py                 # Requête CRUD pour la table Signalement 
      └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
 ├──  scriptSQL/                         # Script SQL pour la base de données
-     └── Planificator.sql                # Script finale de la base de données
+     └── Planificator.sql               # Script finale de la base de données
 └──  README.md                          # Documentation
 ```
 
@@ -47,4 +47,5 @@ Database/
 Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données
 
 ### 📃 Licence
+
 Ce projet est libre de droits et peut être utilisé pour des projets personnels.

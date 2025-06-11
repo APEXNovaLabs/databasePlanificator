@@ -1,3 +1,5 @@
+# generate_traitements_report.py
+
 import pandas as pd
 import datetime
 import asyncio
@@ -5,6 +7,7 @@ import aiomysql
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
 from connexionDB import DB_CONFIG  # Importe la configuration de la DB
 
 
@@ -15,11 +18,11 @@ async def get_traitements_for_month(year: int, month: int):
         conn = await aiomysql.connect(**DB_CONFIG)
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT pd.date_planification        AS `la date du traitement`, \
-                           tt.typeTraitement            AS `le traitement concerné`, \
-                           tt.categorieTraitement       AS `la catégorie du traitement`, \
-                           CONCAT(c.nom, ' ', c.prenom) AS `le client concerné`, \
-                           c.categorie                  AS `la catégorie du client`
+                    SELECT pd.date_planification        AS `Date du traitement`, \
+                           tt.typeTraitement            AS `Traitement concerné`, \
+                           tt.categorieTraitement       AS `Catégorie du traitement`, \
+                           CONCAT(c.nom, ' ', c.prenom) AS `Client concerné`, \
+                           c.categorie                  AS `Catégorie du client`
                     FROM PlanningDetails pd \
                              JOIN \
                          Planning p ON pd.planning_id = p.planning_id \
@@ -63,9 +66,9 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     # Titre du rapport
     ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
     ws.cell(row=1, column=1).alignment = center_align
-    # Merge cells for title (assuming max 5 data columns + 1 for count)
-    num_cols_for_merge = 5  # Colonnes fixes pour le rapport de traitements
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols_for_merge)
+    # Merge cells for title (assuming 5 data columns for the report)
+    num_data_cols = 5
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
 
     # Nombre total de traitements
     total_traitements = len(data)
@@ -74,11 +77,12 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     # Ligne vide pour la séparation
     ws.cell(row=4, column=1, value="")
 
-    if not data:
+    # Initialiser df ici, même si 'data' est vide
+    df = pd.DataFrame(data)
+
+    if df.empty:  # Utiliser df.empty pour vérifier si des données ont été chargées
         ws.cell(row=5, column=1, value="Aucun traitement trouvé pour ce mois.")
     else:
-        df = pd.DataFrame(data)
-
         # Écrire les en-têtes de colonne
         headers = df.columns.tolist()
         for col_idx, header in enumerate(headers, 1):
@@ -86,20 +90,26 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
             cell.font = bold_font
 
         # Écrire les données
-        # Utilisation de dataframe_to_rows pour des données structurées
-        for r_idx, row_data in enumerate(df.values.tolist(),
-                                         start=6):  # df.values.tolist() pour obtenir les lignes de données
+        for r_idx, row_data in enumerate(df.values.tolist(), start=6):
             for c_idx, value in enumerate(row_data, 1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
     # Ajuster la largeur des colonnes
-    for column_cells in ws.columns:
-        length = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
-        ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+    # df est toujours défini ici, donc pas d'UnboundLocalError
+    max_col_for_width = len(df.columns) if not df.empty else num_data_cols
+
+    for i in range(1, max_col_for_width + 1):
+        column_letter = get_column_letter(i)
+        length = 0
+        for row_idx in range(1, ws.max_row + 1):
+            cell = ws.cell(row=row_idx, column=i)
+            if cell.value is not None:
+                length = max(length, len(str(cell.value)))
+        ws.column_dimensions[column_letter].width = length + 2
 
     try:
         output = BytesIO()
-        wb.save(output)  # Sauvegarde dans le buffer
+        wb.save(output)
         with open(file_name, 'wb') as f:
             f.write(output.getvalue())
 
@@ -110,13 +120,31 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
 
 # --- Fonction principale pour exécuter le rapport des traitements ---
 async def main_traitements_report():
-    current_year = datetime.datetime.now().year
-    current_month = datetime.datetime.now().month
+    while True:
+        try:
+            year_input = input("Veuillez entrer l'année pour le rapport des traitements (ex: 2023) : ")
+            month_input = input(
+                "Veuillez entrer le numéro du mois (1-12) pour le rapport des traitements (ex: 6 pour Juin) : ")
+
+            selected_year = int(year_input)
+            selected_month = int(month_input)
+
+            if not (1 <= selected_month <= 12):
+                print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                continue
+
+            if not (2000 <= selected_year <= datetime.datetime.now().year + 1):
+                print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 1}.")
+                continue
+
+            break
+        except ValueError:
+            print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
 
     print(
-        f"\nPréparation du rapport des traitements pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
-    traitements_data = await get_traitements_for_month(current_year, current_month)
-    generate_traitements_excel(traitements_data, current_year, current_month)
+        f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
+    traitements_data = await get_traitements_for_month(selected_year, selected_month)
+    generate_traitements_excel(traitements_data, selected_year, selected_month)
 
 
 if __name__ == "__main__":

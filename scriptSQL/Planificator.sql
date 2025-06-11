@@ -145,10 +145,15 @@ CREATE TABLE Client (
                         email VARCHAR(255) NOT NULL,
                         telephone VARCHAR(20) NOT NULL,
                         adresse VARCHAR(255) NOT NULL,
+                        nif VARCHAR(50),
+                        stat VARCHAR(50),
                         date_ajout DATE NOT NULL,
                         categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL
 );
+
+# NIF STAT: Valable uniquement pour les sociétés
+
 /*
     Dans le code back-end:
     Si ce n'est pas un particulier alors prénom change en Responsable

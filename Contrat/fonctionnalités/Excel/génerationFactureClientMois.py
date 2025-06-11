@@ -48,7 +48,7 @@ async def get_factures_data_for_client(client_id: int, year: int, month: int):
             result = await cursor.fetchall()
             return result
     except Exception as e:
-        print(f"Erreur lors de la récupération des données de facture : {e}")
+        logging.error(f"Erreur lors de la récupération des données de facture : {e}")
         return []
     finally:
         if conn:

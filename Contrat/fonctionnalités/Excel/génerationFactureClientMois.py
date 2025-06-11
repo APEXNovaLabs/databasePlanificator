@@ -5,6 +5,7 @@ import aiomysql
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from connexionDB import DB_CONFIG  # Importe la configuration de la DB
 
 
@@ -48,6 +49,28 @@ async def get_factures_data_for_client(client_id: int, year: int, month: int):
             return result
     except Exception as e:
         print(f"Erreur lors de la récupération des données de facture : {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+# --- Fonction utilitaire pour obtenir le client_id et nom complet de tous les clients ---
+async def get_all_clients():
+    conn = None
+    try:
+        conn = await aiomysql.connect(**DB_CONFIG)
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT client_id, CONCAT(nom, ' ', prenom) AS full_name
+                    FROM Client
+                    ORDER BY full_name; \
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchall()
+            return result
+    except Exception as e:
+        print(f"Erreur lors de la récupération de la liste des clients : {e}")
         return []
     finally:
         if conn:
@@ -101,17 +124,11 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
     current_row = 1
 
     # Informations du client (en-tête)
-    if data:  # Utiliser les infos du premier enregistrement pour le client
+    if data:
         client_info = data[0]
-        # Logique pour le nom du client/responsable
         client_display_name = f"{client_info['client_nom']} {client_info['client_prenom']}"
         if client_info['client_categorie'] != 'Particulier':
-            # Si ce n'est pas un particulier, on peut considérer le prénom comme le responsable ou ajuster
-            # Selon la sémantique de votre DB: si 'prenom' est le nom du responsable, on peut l'afficher.
-            # Ex: "Société X (Responsable: Jean Dupont)"
             client_display_name = f"{client_info['client_nom']} (Responsable: {client_info['client_prenom']})"
-            # Ou si 'prenom' est juste un champ non pertinent pour les organisations, on pourrait faire:
-            # client_display_name = client_info['client_nom']
 
         ws.cell(row=current_row, column=1, value="Client :").font = bold_font
         ws.cell(row=current_row, column=2, value=client_display_name)
@@ -132,9 +149,9 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
     current_row += 1  # Ligne vide
 
     # Ligne "Facture du mois de:"
-    # Assume le tableau aura 4 colonnes de données + des colonnes pour les totaux
+    num_table_cols = 4  # Fixed number of columns for the main invoice table
     ws.cell(row=current_row, column=1, value=f"Facture du mois de : {month_name_fr} {year}").font = header_font
-    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_table_cols)
     ws.cell(row=current_row, column=1).alignment = Alignment(horizontal='center')
     current_row += 2  # Deux lignes vides après pour la séparation avec le tableau
 
@@ -196,14 +213,21 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
         ws.cell(row=current_row, column=3, value=grand_total).font = bold_font
         current_row += 1
 
-    # Ajuster la largeur des colonnes pour toutes les données écrites
-    for column_cells in ws.columns:
-        length = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
-        ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+    # Ajuster la largeur des colonnes
+    max_col_for_width = max(num_table_cols, 3)  # Max de 4 (tableau) ou 3 (totaux)
+
+    for i in range(1, max_col_for_width + 1):
+        column_letter = get_column_letter(i)
+        length = 0
+        for row_idx in range(1, ws.max_row + 1):
+            cell = ws.cell(row=row_idx, column=i)
+            if cell.value is not None:
+                length = max(length, len(str(cell.value)))
+        ws.column_dimensions[column_letter].width = length + 2
 
     try:
         output = BytesIO()
-        wb.save(output)  # Sauvegarde dans le buffer
+        wb.save(output)
         with open(file_name, 'wb') as f:
             f.write(output.getvalue())
 
@@ -217,21 +241,46 @@ async def main_client_invoice():
     current_year = datetime.datetime.now().year
     current_month = datetime.datetime.now().month
 
-    # !! IMPORTANT !!
-    # Remplacez 'Nom Du Client Complet' par le nom complet du client (Nom Prénom) tel qu'il est dans votre DB.
-    client_name_for_invoice = "Andriamasinoro Aina Maminirina"  # Exemple tiré de votre modèle
+    print("\n--- Liste des clients disponibles ---")
+    clients = await get_all_clients()
+    if not clients:
+        print("Aucun client trouvé dans la base de données. Impossible de générer une facture.")
+        return
 
-    print(f"\nRecherche de l'ID pour le client '{client_name_for_invoice}'...")
-    client_id_for_invoice = await get_client_id_by_name(client_name_for_invoice)
+    client_map = {}
+    for i, client in enumerate(clients):
+        print(f"{i + 1}. {client['full_name']}")
+        client_map[str(i + 1)] = client  # Mapper l'index au dictionnaire client
 
-    if client_id_for_invoice:
-        print(
-            f"Récupération des données de facture pour '{client_name_for_invoice}' ({client_id_for_invoice}) pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
-        factures_data = await get_factures_data_for_client(client_id_for_invoice, current_year, current_month)
-        generate_facture_excel(factures_data, client_name_for_invoice, current_year, current_month)
-    else:
-        print(
-            f"Client '{client_name_for_invoice}' non trouvé dans la base de données. Impossible de générer la facture.")
+    client_id_for_invoice = None
+    client_full_name_for_invoice = None
+
+    while client_id_for_invoice is None:
+        choice = input(
+            "\nVeuillez entrer le numéro du client dans la liste, ou son nom complet (Nom Prénom) si non listé : ").strip()
+
+        if choice.isdigit():
+            # Si l'utilisateur entre un numéro, essayez de trouver le client dans le map
+            if choice in client_map:
+                selected_client = client_map[choice]
+                client_id_for_invoice = selected_client['client_id']
+                client_full_name_for_invoice = selected_client['full_name']
+                print(f"Client sélectionné : {client_full_name_for_invoice}")
+            else:
+                print("Numéro invalide. Veuillez réessayer.")
+        else:
+            # Si l'utilisateur entre un nom, essayez de le rechercher
+            client_full_name_for_invoice = choice
+            client_id_for_invoice = await get_client_id_by_name(client_full_name_for_invoice)
+            if client_id_for_invoice is None:
+                print(f"Client '{client_full_name_for_invoice}' non trouvé. Veuillez vérifier le nom et réessayer.")
+            else:
+                print(f"Client trouvé : {client_full_name_for_invoice}")
+
+    print(
+        f"\nRécupération des données de facture pour '{client_full_name_for_invoice}' pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
+    factures_data = await get_factures_data_for_client(client_id_for_invoice, current_year, current_month)
+    generate_facture_excel(factures_data, client_full_name_for_invoice, current_year, current_month)
 
 
 if __name__ == "__main__":

@@ -146,12 +146,14 @@ async def main():
                             prenom = input("Prénom (facultatif) : ")
                         else:
                             prenom = input("Responsable : ")
+                            nif = input("NIF (Numéro d'Immatriculation Fiscale): ")
+                            stat = input("Stat:")
 
                         email = input("Email : ")
                         telephone = input("Téléphone : ")
                         adresse = input("Adresse : ")
                         axe = input("Axe : ")
-                        result = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
+                        result = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, nif, stat,axe)
 
                     elif table_name == "Contrat":
                         client_id = int(input("ID du client : "))

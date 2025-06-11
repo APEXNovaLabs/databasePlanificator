@@ -42,7 +42,7 @@ async def get_traitements_for_month(year: int, month: int):
             result = await cursor.fetchall()
             return result
     except Exception as e:
-        print(f"Erreur lors de la récupération des traitements : {e}")
+        logging.error(f"Erreur lors de la récupération des traitements : {e}")
         return []
     finally:
         if conn:

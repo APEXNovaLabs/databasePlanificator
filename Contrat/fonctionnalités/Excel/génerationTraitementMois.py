@@ -22,7 +22,8 @@ async def get_traitements_for_month(year: int, month: int):
                            tt.typeTraitement            AS `Traitement concerné`, \
                            tt.categorieTraitement       AS `Catégorie du traitement`, \
                            CONCAT(c.nom, ' ', c.prenom) AS `Client concerné`, \
-                           c.categorie                  AS `Catégorie du client`
+                           c.categorie                  AS `Catégorie du client`, \
+                           c.axe                        AS `Axe du client`
                     FROM PlanningDetails pd \
                              JOIN \
                          Planning p ON pd.planning_id = p.planning_id \
@@ -42,7 +43,7 @@ async def get_traitements_for_month(year: int, month: int):
             result = await cursor.fetchall()
             return result
     except Exception as e:
-        logging.error(f"Erreur lors de la récupération des traitements : {e}")
+        print(f"Erreur lors de la récupération des traitements : {e}")
         return []
     finally:
         if conn:
@@ -66,8 +67,8 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     # Titre du rapport
     ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
     ws.cell(row=1, column=1).alignment = center_align
-    # Merge cells for title (assuming 5 data columns for the report)
-    num_data_cols = 5
+    # Merge cells for title (assuming 6 data columns for the report)
+    num_data_cols = 6
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
 
     # Nombre total de traitements

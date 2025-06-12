@@ -21,18 +21,14 @@ async def DBConnection():
     password = input("Mot de passe : ")
     database = input("Nom de la base de données : ")
 
-    try:
-        # Créer le pool de connexions
-        pool = await aiomysql.create_pool(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            db=database,
-            autocommit=True
-        )
+    # Créer le pool de connexions
+    pool = await aiomysql.create_pool(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        db=database,
+        autocommit=True
+    )
 
-    finally:
-        if pool:
-            pool.close()
-            await pool.wait_closed()
+    return pool

@@ -8,14 +8,15 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
-from connexionDB import DB_CONFIG  # Importe la configuration de la DB
+from connexionDB import DBConnection
 
-
+# Connection à la base de données
+DBConnection()
 # --- Fonction de récupération des traitements pour un mois donné ---
 async def get_traitements_for_month(year: int, month: int):
     conn = None
     try:
-        conn = await aiomysql.connect(**DB_CONFIG)
+        conn = await aiomysql.connect(**DBConnection())
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
                     SELECT pd.date_planification        AS `Date du traitement`, \

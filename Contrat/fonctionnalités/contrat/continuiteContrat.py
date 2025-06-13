@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 async def verifier_statut_contrat(pool, contrat_id):
     """Vérifie le statut d'un contrat."""
 
-    async with pool.acquire() as conn:
+    async with pool.acquire as conn:
         async with conn.cursor() as cur:
             await cur.execute("SELECT statut_contrat FROM Contrat WHERE contrat_id = %s", (contrat_id,))
             statut = await cur.fetchone()
@@ -18,9 +18,9 @@ async def verifier_statut_contrat(pool, contrat_id):
 async def gerer_continuité_contrat(pool, contrat_id):
     """Gère la continuité d'un contrat."""
 
-    async with pool.acquire() as conn:
+    async with pool.acquire as conn:
         async with conn.cursor() as cur:
-            await cur.execute("SELECT duree, date_fin_contrat, duree_contrat FROM Contrat WHERE contrat_id = %s", (contrat_id,))
+            await cur.execute("SELECT duree, date_fin, duree_contrat FROM Contrat WHERE contrat_id = %s", (contrat_id,))
             contrat = await cur.fetchone()
 
             if not contrat:
@@ -34,7 +34,7 @@ async def gerer_continuité_contrat(pool, contrat_id):
                     choix = input("Souhaitez-vous renouveler le contrat ? (oui/non) : ")
                     if choix.lower() == 'oui':
                         nouvelle_date_fin = date_fin_contrat + timedelta(months=duree_contrat)
-                        await cur.execute("UPDATE Contrat SET date_fin_contrat = %s WHERE contrat_id = %s", (nouvelle_date_fin, contrat_id))
+                        await cur.execute("UPDATE Contrat SET date_fin = %s WHERE contrat_id = %s", (nouvelle_date_fin, contrat_id))
                         print("Contrat renouvelé.")
                     else:
                         await cur.execute("UPDATE Contrat SET statut_contrat = 'Terminé' WHERE contrat_id = %s", (contrat_id,))
@@ -46,9 +46,40 @@ async def gerer_continuité_contrat(pool, contrat_id):
                     print("Contrat terminé.")
 
 async def main():
-    pool = await aiomysql.create_pool(host='127.0.0.1', port=3306,
-                                      user='votre_utilisateur', password='votre_mot_de_passe',
-                                      db='Planificator', autocommit=True)
+    # Connexion à la base de données
+    host = input("Hôte de la base de données (par défaut : localhost) : ")
+    if not host:
+        host = "localhost"
+
+    port_str = input("Port de la base de données (par défaut : 3306) : ")
+    if port_str:
+        try:
+            port = int(port_str)
+        except ValueError:
+            print("Port invalide. Utilisation du port par défaut 3306.")
+            port = 3306
+    else:
+        port = 3306
+
+    user = input("Nom d'utilisateur : ")
+    password = input("Mot de passe : ")
+    database = input("Nom de la base de données (Planificator): ")
+    if not database:
+        database = "Planificator"
+
+    try:
+        pool = await aiomysql.create_pool(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            db=database,
+            autocommit=True
+        )
+    finally:
+        if pool:
+            pool.close()
+            await pool.wait_closed()
 
     contrat_id = int(input("ID du contrat : "))
     choix = input("Vérifier le statut (1) ou gérer la continuité (2) ? ")

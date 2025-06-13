@@ -149,7 +149,7 @@ CREATE TABLE Client (
                         stat VARCHAR(50),
                         date_ajout DATE NOT NULL,
                         categorie ENUM ('Particulier', 'Organisation', 'Société') NOT NULL,
-                        axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL
+                        axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL
 );
 
 # NIF STAT: Valable uniquement pour les sociétés

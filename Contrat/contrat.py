@@ -52,7 +52,7 @@ async def obtenir_axe_contrat(pool, contrat_id):
     """Récupère l'axe du contrat."""
     async with pool.acquire() as conn:
         async with conn.cursor() as cursor:
-            await cursor.execute("SELECT c.axe FROM Contrat c JOIN Client cl ON c.client_id = cl.client_id WHERE c.contrat_id = %s", (contrat_id,))
+            await cursor.execute("SELECT cl.axe FROM Contrat c JOIN Client cl ON c.client_id = cl.client_id WHERE c.contrat_id = %s", (contrat_id,))
             resultat = await cursor.fetchone()
             if resultat:
                 return resultat[0]

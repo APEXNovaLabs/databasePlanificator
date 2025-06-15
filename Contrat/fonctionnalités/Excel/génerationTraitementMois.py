@@ -1,5 +1,3 @@
-# generate_traitements_report.py
-
 import pandas as pd
 import datetime
 import asyncio
@@ -8,37 +6,36 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
-from connexionDB import DBConnection
+from connexionDB import DBConnection # Importe la fonction DBConnection
 
-# Connection à la base de données
-DBConnection()
 # --- Fonction de récupération des traitements pour un mois donné ---
-async def get_traitements_for_month(year: int, month: int):
+# Prend le pool de connexions en argument
+async def get_traitements_for_month(pool, year: int, month: int):
     conn = None
     try:
-        conn = await aiomysql.connect(**DBConnection())
+        conn = await pool.acquire() # Acquérir une connexion du pool
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT pd.date_planification        AS `Date du traitement`, \
-                           tt.typeTraitement            AS `Traitement concerné`, \
-                           tt.categorieTraitement       AS `Catégorie du traitement`, \
-                           CONCAT(c.nom, ' ', c.prenom) AS `Client concerné`, \
-                           c.categorie                  AS `Catégorie du client`, \
+                    SELECT pd.date_planification        AS `Date du traitement`,
+                           tt.typeTraitement            AS `Traitement concerné`,
+                           tt.categorieTraitement       AS `Catégorie du traitement`,
+                           CONCAT(c.nom, ' ', c.prenom) AS `Client concerné`,
+                           c.categorie                  AS `Catégorie du client`,
                            c.axe                        AS `Axe du client`
-                    FROM PlanningDetails pd \
-                             JOIN \
-                         Planning p ON pd.planning_id = p.planning_id \
-                             JOIN \
-                         Traitement t ON p.traitement_id = t.traitement_id \
-                             JOIN \
-                         TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement \
-                             JOIN \
-                         Contrat co ON t.contrat_id = co.contrat_id \
-                             JOIN \
+                    FROM PlanningDetails pd
+                             JOIN
+                         Planning p ON pd.planning_id = p.planning_id
+                             JOIN
+                         Traitement t ON p.traitement_id = t.traitement_id
+                             JOIN
+                         TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
+                             JOIN
+                         Contrat co ON t.contrat_id = co.contrat_id
+                             JOIN
                          Client c ON co.client_id = c.client_id
-                    WHERE YEAR(pd.date_planification) = %s \
+                    WHERE YEAR(pd.date_planification) = %s
                       AND MONTH(pd.date_planification) = %s
-                    ORDER BY pd.date_planification; \
+                    ORDER BY pd.date_planification;
                     """
             await cursor.execute(query, (year, month))
             result = await cursor.fetchall()
@@ -48,7 +45,7 @@ async def get_traitements_for_month(year: int, month: int):
         return []
     finally:
         if conn:
-            conn.close()
+            pool.release(conn) # Relâcher la connexion dans le pool
 
 
 # --- Fonction pour générer le fichier Excel des traitements ---
@@ -69,7 +66,7 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
     ws.cell(row=1, column=1).alignment = center_align
     # Merge cells for title (assuming 6 data columns for the report)
-    num_data_cols = 6
+    num_data_cols = 6 # Maintient 6 colonnes pour l'axe du client
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
 
     # Nombre total de traitements
@@ -82,7 +79,7 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     # Initialiser df ici, même si 'data' est vide
     df = pd.DataFrame(data)
 
-    if df.empty:  # Utiliser df.empty pour vérifier si des données ont été chargées
+    if df.empty:
         ws.cell(row=5, column=1, value="Aucun traitement trouvé pour ce mois.")
     else:
         # Écrire les en-têtes de colonne
@@ -97,7 +94,6 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
     # Ajuster la largeur des colonnes
-    # df est toujours défini ici, donc pas d'UnboundLocalError
     max_col_for_width = len(df.columns) if not df.empty else num_data_cols
 
     for i in range(1, max_col_for_width + 1):
@@ -122,32 +118,45 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
 
 # --- Fonction principale pour exécuter le rapport des traitements ---
 async def main_traitements_report():
-    while True:
-        try:
-            year_input = input("Veuillez entrer l'année pour le rapport des traitements (ex: 2023) : ")
-            month_input = input(
-                "Veuillez entrer le numéro du mois (1-12) pour le rapport des traitements (ex: 6 pour Juin) : ")
+    pool = None # Initialiser le pool à None
+    try:
+        pool = await DBConnection() # Appel de la fonction asynchrone pour obtenir le pool
+        if not pool: # Si la création du pool a échoué
+            print("Échec de la connexion à la base de données. Annulation de l'opération.")
+            return
 
-            selected_year = int(year_input)
-            selected_month = int(month_input)
+        while True:
+            try:
+                year_input = input("Veuillez entrer l'année pour le rapport des traitements (ex: 2023) : ")
+                month_input = input(
+                    "Veuillez entrer le numéro du mois (1-12) pour le rapport des traitements (ex: 6 pour Juin) : ")
 
-            if not (1 <= selected_month <= 12):
-                print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
-                continue
+                selected_year = int(year_input)
+                selected_month = int(month_input)
 
-            if not (2000 <= selected_year <= datetime.datetime.now().year + 1):
-                print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 1}.")
-                continue
+                if not (1 <= selected_month <= 12):
+                    print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                    continue
 
-            break
-        except ValueError:
-            print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
+                if not (2000 <= selected_year <= datetime.datetime.now().year + 1):
+                    print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 1}.")
+                    continue
 
-    print(
-        f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
-    traitements_data = await get_traitements_for_month(selected_year, selected_month)
-    generate_traitements_excel(traitements_data, selected_year, selected_month)
+                break
+            except ValueError:
+                print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
 
+        print(
+            f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
+        # Passer le pool à la fonction de récupération des données
+        traitements_data = await get_traitements_for_month(pool, selected_year, selected_month)
+        generate_traitements_excel(traitements_data, selected_year, selected_month)
+
+    except Exception as e:
+        print(f"Une erreur inattendue est survenue dans le script principal : {e}")
+    finally:
+        if pool:
+            pool.close() # Fermer le pool à la fin de l'exécution
 
 if __name__ == "__main__":
     asyncio.run(main_traitements_report())

@@ -165,7 +165,7 @@ CREATE TABLE Contrat (
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin VARCHAR(50),
-                         statut_contrat ENUM ('Actif', 'Terminé') NOT NULL DEFAULT 'Actif',
+                         statut_contrat ENUM ('Actif', 'Terminé', 'Résilié') NOT NULL DEFAULT 'Actif',
                          duree_contrat INT DEFAULT NULL,
                          duree ENUM ('Indeterminée', 'Déterminée') NOT NULL,
                          categorie ENUM ('Nouveau', 'Renouvellement') NOT NULL,

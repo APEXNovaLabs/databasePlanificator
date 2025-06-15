@@ -6,65 +6,69 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from connexionDB import DB_CONFIG  # Importe la configuration de la DB
+# Importe la fonction DBConnection depuis votre fichier de connexion
+from connexionDB import DBConnection
 
 
 # --- Fonction de récupération des données de facture pour un client spécifique ---
-async def get_factures_data_for_client(client_id: int, year: int, month: int):
+# Prend 'pool' en argument
+async def get_factures_data_for_client(pool, client_id: int, year: int, month: int):
     conn = None
     try:
-        conn = await aiomysql.connect(**DB_CONFIG)
+        conn = await pool.acquire()  # Acquérir une connexion du pool
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT cl.nom            AS client_nom, \
-                           cl.prenom         AS client_prenom, \
-                           cl.adresse        AS client_adresse, \
-                           cl.telephone      AS client_telephone, \
-                           cl.categorie      AS client_categorie, \
-                           f.date_traitement AS `Date de traitement`, \
-                           tt.typeTraitement AS `Traitement (Type)`, \
-                           pd.statut         AS `Etat traitement`, \
-                           f.etat            AS `Etat paiement (Payée ou non)`, \
+                    SELECT cl.nom            AS client_nom,
+                           cl.prenom         AS client_prenom,
+                           cl.adresse        AS client_adresse,
+                           cl.telephone      AS client_telephone,
+                           cl.categorie      AS client_categorie,
+                           f.date_traitement AS `Date de traitement`,
+                           tt.typeTraitement AS `Traitement (Type)`,
+                           pd.statut         AS `Etat traitement`,
+                           f.etat            AS `Etat paiement (Payée ou non)`,
                            f.montant         AS montant_facture
-                    FROM Facture f \
-                             JOIN \
-                         PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id \
-                             JOIN \
-                         Planning p ON pd.planning_id = p.planning_id \
-                             JOIN \
-                         Traitement tr ON p.traitement_id = tr.traitement_id \
-                             JOIN \
-                         TypeTraitement tt ON tr.id_type_traitement = tt.id_type_traitement \
-                             JOIN \
-                         Contrat co ON tr.contrat_id = co.contrat_id \
-                             JOIN \
+                    FROM Facture f
+                             JOIN
+                         PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
+                             JOIN
+                         Planning p ON pd.planning_id = p.planning_id
+                             JOIN
+                         Traitement tr ON p.traitement_id = tr.traitement_id
+                             JOIN
+                         TypeTraitement tt ON tr.id_type_traitement = tt.id_type_traitement
+                             JOIN
+                         Contrat co ON tr.contrat_id = co.contrat_id
+                             JOIN
                          Client cl ON co.client_id = cl.client_id
                     WHERE cl.client_id = %s
-                      AND YEAR(f.date_traitement) = %s \
+                      AND YEAR(f.date_traitement) = %s
                       AND MONTH(f.date_traitement) = %s
-                    ORDER BY f.date_traitement; \
+                    ORDER BY f.date_traitement;
                     """
             await cursor.execute(query, (client_id, year, month))
             result = await cursor.fetchall()
             return result
     except Exception as e:
-        print.error(f"Erreur lors de la récupération des données de facture : {e}")
+        # Correction ici : print.error n'existe pas, utilisez print(f"Erreur...")
+        print(f"Erreur lors de la récupération des données de facture : {e}")
         return []
     finally:
         if conn:
-            conn.close()
+            pool.release(conn)  # Relâcher la connexion dans le pool
 
 
 # --- Fonction utilitaire pour obtenir le client_id et nom complet de tous les clients ---
-async def get_all_clients():
+# Prend 'pool' en argument
+async def get_all_clients(pool):
     conn = None
     try:
-        conn = await aiomysql.connect(**DB_CONFIG)
+        conn = await pool.acquire()  # Acquérir une connexion du pool
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
                     SELECT client_id, CONCAT(nom, ' ', prenom) AS full_name
                     FROM Client
-                    ORDER BY full_name; \
+                    ORDER BY full_name;
                     """
             await cursor.execute(query)
             result = await cursor.fetchall()
@@ -74,20 +78,21 @@ async def get_all_clients():
         return []
     finally:
         if conn:
-            conn.close()
+            pool.release(conn)  # Relâcher la connexion dans le pool
 
 
 # --- Fonction utilitaire pour obtenir le client_id à partir du nom/prénom ---
-async def get_client_id_by_name(client_name: str):
+# Prend 'pool' en argument
+async def get_client_id_by_name(pool, client_name: str):
     conn = None
     try:
-        conn = await aiomysql.connect(**DB_CONFIG)
+        conn = await pool.acquire()  # Acquérir une connexion du pool
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT client_id \
-                    FROM Client \
-                    WHERE CONCAT(nom, ' ', prenom) = %s \
-                    LIMIT 1; \
+                    SELECT client_id
+                    FROM Client
+                    WHERE CONCAT(nom, ' ', prenom) = %s
+                    LIMIT 1;
                     """
             await cursor.execute(query, (client_name,))
             result = await cursor.fetchone()
@@ -97,7 +102,7 @@ async def get_client_id_by_name(client_name: str):
         return None
     finally:
         if conn:
-            conn.close()
+            pool.release(conn)  # Relâcher la connexion dans le pool
 
 
 # --- Fonction pour générer le fichier Excel de la facture client ---
@@ -214,7 +219,7 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
         current_row += 1
 
     # Ajuster la largeur des colonnes
-    max_col_for_width = max(num_table_cols, 3)  # Max de 4 (tableau) ou 3 (totaux)
+    max_col_for_width = max(num_table_cols, 3)
 
     for i in range(1, max_col_for_width + 1):
         column_letter = get_column_letter(i)
@@ -238,49 +243,63 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
 
 # --- Fonction principale pour exécuter la génération de facture ---
 async def main_client_invoice():
-    current_year = datetime.datetime.now().year
-    current_month = datetime.datetime.now().month
+    pool = None  # Initialiser le pool à None
+    try:
+        pool = await DBConnection()  # Appel de la fonction asynchrone pour obtenir le pool
+        if not pool:  # Si la création du pool a échoué
+            print("Échec de la connexion à la base de données. Annulation de l'opération.")
+            return
 
-    print("\n--- Liste des clients disponibles ---")
-    clients = await get_all_clients()
-    if not clients:
-        print("Aucun client trouvé dans la base de données. Impossible de générer une facture.")
-        return
+        current_year = datetime.datetime.now().year
+        current_month = datetime.datetime.now().month
 
-    client_map = {}
-    for i, client in enumerate(clients):
-        print(f"{i + 1}. {client['full_name']}")
-        client_map[str(i + 1)] = client  # Mapper l'index au dictionnaire client
+        print("\n--- Liste des clients disponibles ---")
+        clients = await get_all_clients(pool)  # Passer le pool
+        if not clients:
+            print("Aucun client trouvé dans la base de données. Impossible de générer une facture.")
+            return
 
-    client_id_for_invoice = None
-    client_full_name_for_invoice = None
+        client_map = {}
+        for i, client in enumerate(clients):
+            print(f"{i + 1}. {client['full_name']}")
+            client_map[str(i + 1)] = client
 
-    while client_id_for_invoice is None:
-        choice = input(
-            "\nVeuillez entrer le numéro du client dans la liste, ou son nom complet (Nom Prénom) si non listé : ").strip()
+        client_id_for_invoice = None
+        client_full_name_for_invoice = None
 
-        if choice.isdigit():
-            # Si l'utilisateur entre un numéro, essayez de trouver le client dans le map
-            if choice in client_map:
-                selected_client = client_map[choice]
-                client_id_for_invoice = selected_client['client_id']
-                client_full_name_for_invoice = selected_client['full_name']
-                print(f"Client sélectionné : {client_full_name_for_invoice}")
+        while client_id_for_invoice is None:
+            choice = input(
+                "\nVeuillez entrer le numéro du client dans la liste, ou son nom complet (Nom Prénom) si non listé : ").strip()
+
+            if choice.isdigit():
+                if choice in client_map:
+                    selected_client = client_map[choice]
+                    client_id_for_invoice = selected_client['client_id']
+                    client_full_name_for_invoice = selected_client['full_name']
+                    print(f"Client sélectionné : {client_full_name_for_invoice}")
+                else:
+                    print("Numéro invalide. Veuillez réessayer.")
             else:
-                print("Numéro invalide. Veuillez réessayer.")
-        else:
-            # Si l'utilisateur entre un nom, essayez de le rechercher
-            client_full_name_for_invoice = choice
-            client_id_for_invoice = await get_client_id_by_name(client_full_name_for_invoice)
-            if client_id_for_invoice is None:
-                print(f"Client '{client_full_name_for_invoice}' non trouvé. Veuillez vérifier le nom et réessayer.")
-            else:
-                print(f"Client trouvé : {client_full_name_for_invoice}")
+                client_full_name_for_invoice = choice
+                client_id_for_invoice = await get_client_id_by_name(pool,
+                                                                    client_full_name_for_invoice)  # Passer le pool
+                if client_id_for_invoice is None:
+                    print(f"Client '{client_full_name_for_invoice}' non trouvé. Veuillez vérifier le nom et réessayer.")
+                else:
+                    print(f"Client trouvé : {client_full_name_for_invoice}")
 
-    print(
-        f"\nRécupération des données de facture pour '{client_full_name_for_invoice}' pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
-    factures_data = await get_factures_data_for_client(client_id_for_invoice, current_year, current_month)
-    generate_facture_excel(factures_data, client_full_name_for_invoice, current_year, current_month)
+        print(
+            f"\nRécupération des données de facture pour '{client_full_name_for_invoice}' pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
+
+        # Passer le pool
+        factures_data = await get_factures_data_for_client(client_id_for_invoice, current_year, current_month)
+        generate_facture_excel(factures_data, client_full_name_for_invoice, current_year, current_month)
+
+    except Exception as e:
+        print(f"Une erreur inattendue est survenue dans le script principal : {e}")
+    finally:
+        if pool:
+            pool.close()  # Fermer le pool à la fin de l'exécution
 
 
 if __name__ == "__main__":

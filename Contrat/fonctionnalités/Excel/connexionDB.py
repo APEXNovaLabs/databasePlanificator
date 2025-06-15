@@ -1,8 +1,9 @@
 import aiomysql
 
-
 async def DBConnection():
-    # Connexion à la base de données
+    """
+    Demande les informations de connexion à l'utilisateur et crée un pool de connexions.
+    """
     host = input("Hôte de la base de données (par défaut : localhost) : ")
     if not host:
         host = "localhost"
@@ -22,13 +23,18 @@ async def DBConnection():
     database = input("Nom de la base de données : ")
 
     # Créer le pool de connexions
-    pool = await aiomysql.create_pool(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        db=database,
-        autocommit=True
-    )
-
-    return pool
+    try:
+        pool = await aiomysql.create_pool(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            db=database,
+            autocommit=True,
+            maxsize=10
+        )
+        print("Pool de connexions à la base de données créé avec succès.")
+        return pool
+    except Exception as e:
+        print(f"Erreur lors de la création du pool de connexions : {e}")
+        return None

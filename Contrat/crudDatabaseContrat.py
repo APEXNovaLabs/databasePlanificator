@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime
+
 import aiomysql
 from client import create_client, read_client, update_client, delete_client, obtenir_categories
 from contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat

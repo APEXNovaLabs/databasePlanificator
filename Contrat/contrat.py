@@ -7,7 +7,7 @@ async def create_contrat(pool, client_id, date_contrat, date_debut, date_fin_con
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("""
-                INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin_contrat, duree, categorie, duree_contrat)
+                INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, duree, categorie, duree_contrat)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (client_id, date_contrat, date_debut, date_fin_contrat, duree, categorie, duree_contrat))
             await conn.commit()
@@ -25,7 +25,7 @@ async def update_contrat(pool, contrat_id, client_id, date_contrat, date_debut, 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("""
-                UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin_contrat = %s, duree = %s, categorie = %s, duree_contrat = %s
+                UPDATE Contrat SET client_id = %s, date_contrat = %s, date_debut = %s, date_fin = %s, duree = %s, categorie = %s, duree_contrat = %s
                 WHERE contrat_id = %s
             """, (client_id, date_contrat, date_debut, date_fin_contrat, duree, categorie, duree_contrat, contrat_id))
             await conn.commit()
@@ -52,7 +52,7 @@ async def obtenir_axe_contrat(pool, contrat_id):
     """Récupère l'axe du contrat."""
     async with pool.acquire() as conn:
         async with conn.cursor() as cursor:
-            await cursor.execute("SELECT c.axe FROM Contrat c JOIN Client cl ON c.client_id = cl.client_id WHERE c.contrat_id = %s", (contrat_id,))
+            await cursor.execute("SELECT cl.axe FROM Contrat c JOIN Client cl ON c.client_id = cl.client_id WHERE c.contrat_id = %s", (contrat_id,))
             resultat = await cursor.fetchone()
             if resultat:
                 return resultat[0]

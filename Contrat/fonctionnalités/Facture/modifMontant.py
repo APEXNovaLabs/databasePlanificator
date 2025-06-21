@@ -112,7 +112,7 @@ async def update_invoice_amount_and_log_history(pool, facture_id: int, old_amoun
 
             # 2. Insérer l'entrée d'historique
             insert_history_query = """
-                                   INSERT INTO invoice_price_history
+                                   INSERT INTO Historique_prix
                                    (facture_id, old_amount, new_amount, change_date, changed_by)
                                    VALUES (%s, %s, %s, %s, %s);
                                    """

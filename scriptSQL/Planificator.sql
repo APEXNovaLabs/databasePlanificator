@@ -239,7 +239,7 @@ CREATE TABLE Facture (
 );
 
 -- Historique des prix
-CREATE TABLE IF NOT EXISTS Historique_prix (
+CREATE TABLE Historique_prix (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     facture_id INT NOT NULL,
     old_amount DECIMAL(10, 2) NOT NULL,

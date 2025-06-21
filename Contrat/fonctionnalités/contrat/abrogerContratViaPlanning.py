@@ -1,7 +1,7 @@
 import datetime
 import asyncio
 import aiomysql
-from ..Excel.connexionDB import DBConnection
+from Contrat.fonctionnalités.connexionDB import DBConnection
 
 
 async def get_planning_detail_info(pool, planning_detail_id: int):

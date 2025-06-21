@@ -7,7 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 # Importe la fonction DBConnection depuis votre fichier de connexion
-from connexionDB import DBConnection
+from Contrat.fonctionnalités.connexionDB import DBConnection
 
 
 # --- Fonction de récupération des données de facture pour un client spécifique ---

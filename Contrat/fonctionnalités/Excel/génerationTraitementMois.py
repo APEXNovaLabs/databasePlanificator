@@ -6,7 +6,7 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
-from connexionDB import DBConnection
+from Contrat.fonctionnalités.connexionDB import DBConnection
 
 # --- Fonction de récupération des traitements pour un mois donné ---
 async def get_traitements_for_month(pool, year: int, month: int):

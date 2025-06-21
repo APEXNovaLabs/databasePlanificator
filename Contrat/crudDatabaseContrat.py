@@ -146,11 +146,12 @@ async def main():
 
                         if categorie_choisie == "Particulier":
                             prenom = input("Prénom (facultatif) : ")
-                        else:
+                        elif categorie_choisie == "Société":
                             prenom = input("Responsable : ")
                             nif = input("NIF (Numéro d'Immatriculation Fiscale): ")
                             stat = input("Stat:")
-
+                        else:
+                            prenom = input("Responsable : ")
                         email = input("Email : ")
                         telephone = input("Téléphone : ")
                         adresse = input("Adresse : ")
@@ -342,7 +343,6 @@ async def main():
                     id_a_modifier = int(input(f"ID du {table_name} à modifier : "))
                     if table_name == "Client":
                         nom = input("Nouveau nom : ")
-                        prenom = input("Nouveau prénom (facultatif) : ")
                         email = input("Nouvel email : ")
                         telephone = input("Nouveau téléphone : ")
                         adresse = input("Nouvelle adresse : ")
@@ -364,8 +364,16 @@ async def main():
                         else:
                             print("Aucune catégorie trouvée.")
                             categorie_choisie = input("Entrez la catégorie manuellement : ")
+                            if categorie_choisie == "Particulier":
+                                prenom = input("Nouveau prénom (facultatif) : ")
+                            elif categorie_choisie == "Société":
+                                prenom = input("Nouveau responsable: ")
+                                nif = input("Nouveau nif : ")
+                                stat = input("Nouveau state : ")
+                            else:
+                                prenom = input("Nouveau responsable : ")
                             axe = input("Nouvel axe : ")
-                    await func(pool, id_a_modifier, nom, prenom, email, telephone, adresse, categorie_choisie, axe)
+                    await func(pool, id_a_modifier, nom, prenom, email, telephone, adresse, nif, stat, categorie_choisie, axe)
 
                 elif table_name == "Contrat":
                     client_id = int(input("Nouvel ID du client : "))

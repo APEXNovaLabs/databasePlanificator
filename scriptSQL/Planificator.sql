@@ -238,6 +238,17 @@ CREATE TABLE Facture (
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 
+-- Historique des prix
+CREATE TABLE Historique_prix (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    facture_id INT NOT NULL,
+    old_amount DECIMAL(10, 2) NOT NULL,
+    new_amount DECIMAL(10, 2) NOT NULL,
+    change_date DATETIME NOT NULL,
+    changed_by VARCHAR(255) DEFAULT 'System',
+    FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE
+);
+
 -- Table Remarque (Pour confirmer si une traitement a été effectuée)
 CREATE TABLE Remarque (
                           remarque_id INT PRIMARY KEY AUTO_INCREMENT,

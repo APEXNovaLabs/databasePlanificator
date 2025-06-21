@@ -2,3 +2,5 @@
 /.idea
 /Contrat/fonctionnalités/Excel/__pycache__
 /Contrat/__pycache__
+*.pyc
+/Contrat/fonctionnalités/Excel/__pycache__

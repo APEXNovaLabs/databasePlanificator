@@ -41,7 +41,7 @@ Database/
      ├── signalement.py                 # Requête CRUD pour la table Signalement 
      └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
 ├──  scriptSQL                          # Script SQL pour la base de données
-     ├── SuppressioDB.sql               # Script pour une suppression complète des tables et aussi de la base de données (for fun)
+     ├── SuppressionDB.sql               # Script pour une suppression complète des tables et aussi de la base de données (for fun)
      └── Planificator.sql               # Script finale de la base de données
 └──  README.md                          # Documentation
 ```

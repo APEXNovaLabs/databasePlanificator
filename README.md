@@ -26,6 +26,9 @@ Database/
          ├── contrat/                   # Fonctionnalités sur le contrat (Choix sur la continuité du contrat)
          ├── infoClient                 # Option de sélection des clients et affichage des traitements assignés
          ├── remarque/                  # Fonctionnalités sur les remarques (Ajout d'une facture à chaque enregistrement de remarque)
+         ├── Excel/                     # Géneration de planning par Excel
+         ├── Facture/                   # Gestion de facture (Maintenance)
+         ├── signalement/               # Gestion des signalements
          └── triage/                    # Triage: Triage par ordre alphabetique, Recherche de contrat, Triage des traitements par catégorie, triage des traitements spécifiques à chaque client
      ├── regroupeTraitementCat/         # Scripts de regroupement des traitements par catégories (Script Python et SQL)
      ├── client.py                      # Requête CRUD pour la table Client
@@ -37,7 +40,8 @@ Database/
      ├── planning.py                    # Requête CRUD pour la table Planning et PlanningDetails
      ├── signalement.py                 # Requête CRUD pour la table Signalement 
      └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
-├──  scriptSQL/                         # Script SQL pour la base de données
+├──  scriptSQL                          # Script SQL pour la base de données
+     ├── SuppressioDB.sql               # Script pour une suppression complète des tables et aussi de la base de données (for fun)
      └── Planificator.sql               # Script finale de la base de données
 └──  README.md                          # Documentation
 ```

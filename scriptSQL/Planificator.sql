@@ -233,8 +233,8 @@ CREATE TABLE Facture (
                          planning_detail_id INT NOT NULL,
                          montant INT NOT NULL,
                          date_traitement DATE NOT NULL,
-                         etat ENUM('Payé', 'Non payé') NOT NULL DEFAULT 'Non payé',
-                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)') NOT NULL,
+                         etat ENUM('Payé', 'Non payé', 'À venir') DEFAULT 'Non payé',
+                         axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL,
                          FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
 

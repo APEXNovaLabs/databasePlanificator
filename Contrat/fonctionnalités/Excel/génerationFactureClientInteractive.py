@@ -96,8 +96,8 @@ async def get_client_id_by_name(pool, client_name: str):
         if conn:
             pool.release(conn)
 
-# --- Fonction pour récupérer la liste des clients et le nombre de factures par client ---
-async def get_client_invoice_counts(pool):
+# --- Fonction pour récupérer la liste des clients, le nombre de factures et les mois des factures ---
+async def get_client_invoice_counts_and_months(pool):
     conn = None
     try:
         conn = await pool.acquire()
@@ -106,7 +106,8 @@ async def get_client_invoice_counts(pool):
                     SELECT
                         c.client_id,
                         CONCAT(c.nom, ' ', c.prenom) AS full_name,
-                        COUNT(f.facture_id) AS total_factures
+                        COUNT(f.facture_id) AS total_factures,
+                        GROUP_CONCAT(DISTINCT CONCAT(YEAR(f.date_traitement), '-', LPAD(MONTH(f.date_traitement), 2, '0')) ORDER BY YEAR(f.date_traitement) DESC, MONTH(f.date_traitement) DESC SEPARATOR ', ') AS facture_months
                     FROM Client c
                     LEFT JOIN Contrat co ON c.client_id = co.client_id
                     LEFT JOIN Traitement tr ON co.contrat_id = tr.contrat_id
@@ -120,7 +121,7 @@ async def get_client_invoice_counts(pool):
             result = await cursor.fetchall()
             return result
     except Exception as e:
-        print(f"Erreur lors de la récupération du nombre de factures par client : {e}")
+        print(f"Erreur lors de la récupération du nombre de factures par client et des mois : {e}")
         return []
     finally:
         if conn:
@@ -272,44 +273,31 @@ async def main_client_invoice():
 
         # --- Affichage du tableau des clients et de leurs nombres de factures ---
         print("\n--- Aperçu des clients et de leurs factures ---")
-        client_counts = await get_client_invoice_counts(pool)
+        client_counts_and_months = await get_client_invoice_counts_and_months(pool)
 
-        if client_counts:
+        if client_counts_and_months:
             # Créer un DataFrame pour un affichage tabulaire clair
-            df_counts = pd.DataFrame(client_counts)
-            df_counts.rename(columns={'full_name': 'Nom du Client', 'total_factures': 'Nombre de Factures'}, inplace=True)
+            df_counts = pd.DataFrame(client_counts_and_months)
+            df_counts.rename(columns={'full_name': 'Nom du Client', 'total_factures': 'Nb. Factures', 'facture_months': 'Mois des Factures'}, inplace=True)
             df_counts.index = df_counts.index + 1 # Pour commencer l'index à 1
-            print(df_counts[['Nom du Client', 'Nombre de Factures']].to_string())
+            print(df_counts[['Nom du Client', 'Nb. Factures', 'Mois des Factures']].to_string())
+            print("\n") # Ligne vide pour la clarté
         else:
             print("Aucun client trouvé ou aucune facture enregistrée.")
 
-        # --- Suite du script pour la sélection du client et la génération de facture ---
-        current_year = datetime.datetime.now().year
-        current_month = datetime.datetime.now().month
-
-        print("\n--- Génération de facture client ---")
-        clients = await get_all_clients(pool)
-        if not clients:
-            print("Aucun client trouvé dans la base de données. Impossible de générer une facture.")
-            return
+        # --- Sélection du client ---
+        clients_for_selection = await get_all_clients(pool) # Réutiliser get_all_clients pour la sélection
 
         client_map = {}
-        for i, client in enumerate(clients):
+        for i, client in enumerate(clients_for_selection):
             client_map[str(i + 1)] = client # Store client_id for selection by number
-
-        # Display the numbered list of clients for selection (already done by the df_counts, but for consistency if df_counts is skipped)
-        # Re-list for selection if the user wants to pick by number directly after seeing the count table
-        print("\nSélectionnez un client pour générer sa facture:")
-        for i, client in enumerate(clients):
-             print(f"{i + 1}. {client['full_name']}")
-
 
         client_id_for_invoice = None
         client_full_name_for_invoice = None
 
         while client_id_for_invoice is None:
             choice = input(
-                "\nVeuillez entrer le numéro du client dans la liste, ou son nom complet (Nom Prénom) : ").strip()
+                "Veuillez entrer le numéro du client dans la liste ci-dessus, ou son nom complet (Nom Prénom) : ").strip()
 
             if choice.isdigit():
                 if choice in client_map:
@@ -321,18 +309,105 @@ async def main_client_invoice():
                     print("Numéro invalide. Veuillez réessayer.")
             else:
                 client_full_name_for_invoice = choice
-                client_id_for_invoice = await get_client_id_by_name(pool,
-                                                                    client_full_name_for_invoice)
+                client_id_for_invoice = await get_client_id_by_name(pool, client_full_name_for_invoice)
                 if client_id_for_invoice is None:
                     print(f"Client '{client_full_name_for_invoice}' non trouvé. Veuillez vérifier le nom et réessayer.")
                 else:
                     print(f"Client trouvé : {client_full_name_for_invoice}")
 
-        print(
-            f"\nRécupération des données de facture pour '{client_full_name_for_invoice}' pour {datetime.date(current_year, current_month, 1).strftime('%B').capitalize()} {current_year}...")
+        # --- Sélection du mois et de l'année pour la facture ---
+        # Récupérer les mois spécifiques à ce client
+        conn = await pool.acquire() # Re-acquire connection for specific months query
+        try:
+            async with conn.cursor(aiomysql.DictCursor) as cursor:
+                query_client_months = """
+                                SELECT DISTINCT
+                                    YEAR(f.date_traitement) AS annee,
+                                    MONTH(f.date_traitement) AS mois
+                                FROM Facture f
+                                JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
+                                JOIN Planning p ON pd.planning_id = p.planning_id
+                                JOIN Traitement tr ON p.traitement_id = tr.traitement_id
+                                JOIN Contrat co ON tr.contrat_id = co.contrat_id
+                                WHERE co.client_id = %s
+                                ORDER BY annee DESC, mois DESC;
+                                """
+                await cursor.execute(query_client_months, (client_id_for_invoice,))
+                client_available_months = await cursor.fetchall()
+        finally:
+            pool.release(conn)
 
-        factures_data = await get_factures_data_for_client(pool, client_id_for_invoice, current_year, current_month)
-        generate_facture_excel(factures_data, client_full_name_for_invoice, current_year, current_month)
+
+        selected_year = None
+        selected_month = None
+
+        if client_available_months:
+            print(f"\nMois de factures disponibles pour {client_full_name_for_invoice} :")
+            for i, entry in enumerate(client_available_months):
+                month_name = datetime.date(entry['annee'], entry['mois'], 1).strftime('%B').capitalize()
+                print(f"  {i + 1}. {month_name} {entry['annee']}")
+            print("  0. Entrer un autre mois/année manuellement (pour un mois non listé)")
+
+            while True:
+                try:
+                    choice = int(input("Choisissez un numéro de mois dans la liste ou '0' pour entrer manuellement : "))
+                    if 0 < choice <= len(client_available_months):
+                        selected_year = client_available_months[choice - 1]['annee']
+                        selected_month = client_available_months[choice - 1]['mois']
+                        break
+                    elif choice == 0:
+                        while True:
+                            try:
+                                year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ")
+                                month_input = input("Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ")
+
+                                selected_year = int(year_input)
+                                selected_month = int(month_input)
+
+                                if not (1 <= selected_month <= 12):
+                                    print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                                    continue
+                                if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                                    print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                                    continue
+                                break
+                            except ValueError:
+                                print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
+                        break
+                    else:
+                        print("Choix invalide. Veuillez réessayer.")
+                except ValueError:
+                    print("Entrée invalide. Veuillez entrer un numéro.")
+        else:
+            print(f"\nAucune facture trouvée pour {client_full_name_for_invoice}. Veuillez entrer le mois et l'année manuellement.")
+            while True:
+                try:
+                    year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ")
+                    month_input = input("Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ")
+
+                    selected_year = int(year_input)
+                    selected_month = int(month_input)
+
+                    if not (1 <= selected_month <= 12):
+                        print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                        continue
+                    if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                        print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                        continue
+                    break
+                except ValueError:
+                    print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
+
+        if selected_year is None or selected_month is None:
+            print("Sélection de l'année ou du mois annulée. Fin du rapport.")
+            return
+
+
+        print(
+            f"\nPréparation de la facture pour '{client_full_name_for_invoice}' pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
+
+        factures_data = await get_factures_data_for_client(pool, client_id_for_invoice, selected_year, selected_month)
+        generate_facture_excel(factures_data, client_full_name_for_invoice, selected_year, selected_month)
 
     except Exception as e:
         print(f"Une erreur inattendue est survenue dans le script principal : {e}")

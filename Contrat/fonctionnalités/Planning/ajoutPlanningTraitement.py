@@ -23,16 +23,42 @@ async def get_db_credentials():
         database = "Planificator"
     return host, port, user, password, database
 
+async def get_public_holidays(pool, year: int) -> set[datetime.date]:
+    """
+    Récupère les dates des jours fériés pour une année donnée depuis la base de données.
+    Nécessite une table `JoursFeries` avec une colonne `date_ferie` de type DATE.
+    """
+    public_holidays = set()
+    try:
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Assuming you have a table named JoursFeries with a column date_ferie
+                await cur.execute("SELECT date_ferie FROM JoursFeries WHERE YEAR(date_ferie) = %s", (year,))
+                results = await cur.fetchall()
+                for row in results:
+                    if 'date_ferie' in row and isinstance(row['date_ferie'], datetime):
+                        public_holidays.add(row['date_ferie'].date())
+                    elif 'date_ferie' in row and isinstance(row['date_ferie'], datetime.date):
+                        public_holidays.add(row['date_ferie'])
+    except Exception as e:
+        print(f"**Avertissement:** Erreur lors de la récupération des jours fériés: {e}. Les jours fériés ne seront pas pris en compte.")
+    return public_holidays
+
+def is_holiday_or_sunday(date_to_check: datetime.date, public_holidays: set[datetime.date]) -> bool:
+    """
+    Vérifie si une date donnée est un dimanche ou un jour férié.
+    """
+    # date.weekday() returns 6 for Sunday
+    if date_to_check.weekday() == 6:
+        return True
+    if date_to_check in public_holidays:
+        return True
+    return False
+
 async def ajouter_planning_traitement(pool, traitement_id: int, redondance_value: int, redondance_unit: str, date_debut_planification: datetime.date):
     """
     Ajoute un planning pour un traitement donné en générant des détails de planification.
-
-    Args:
-        pool: Le pool de connexions aiomysql.
-        traitement_id (int): L'ID du traitement pour lequel ajouter le planning.
-        redondance_value (int): La valeur numérique de la redondance (ex: 1 pour chaque mois, 3 pour chaque 3 mois).
-        redondance_unit (str): L'unité de la redondance ('jours', 'semaines', 'mois', 'ans').
-        date_debut_planification (datetime.date): La date de début de la planification.
+    Prend en compte les jours fériés et les dimanches.
     """
     conn = None
     try:
@@ -47,7 +73,6 @@ async def ajouter_planning_traitement(pool, traitement_id: int, redondance_value
                     return
 
                 # Définir une date de fin (par exemple, 1 an à partir de la date de début)
-                # Vous pouvez rendre cela configurable si nécessaire
                 date_fin_planification = date_debut_planification + timedelta(days=365)
                 print(f"Planification générée du {date_debut_planification} au {date_fin_planification}.")
 
@@ -64,16 +89,33 @@ async def ajouter_planning_traitement(pool, traitement_id: int, redondance_value
 
                 print(f"Planning principal créé avec ID: {planning_id}")
 
+                # Récupérer les jours fériés pour l'année en cours et l'année prochaine si la période s'étend sur deux ans
+                public_holidays_current_year = await get_public_holidays(pool, date_debut_planification.year)
+                public_holidays_next_year = await get_public_holidays(pool, date_fin_planification.year)
+                all_public_holidays = public_holidays_current_year.union(public_holidays_next_year)
+
+
                 # Calculer et insérer les détails de la planification
                 current_date = date_debut_planification
                 details_added_count = 0
 
                 while current_date <= date_fin_planification:
-                    await cur.execute("""
-                        INSERT INTO PlanningDetails (planning_id, date_planification, statut, element_planification)
-                        VALUES (%s, %s, 'À venir', 'Traitement')
-                    """, (planning_id, current_date))
-                    details_added_count += 1
+                    # Ajuster la date si c'est un dimanche ou un jour férié
+                    while is_holiday_or_sunday(current_date, all_public_holidays):
+                        print(f"La date {current_date} est un dimanche ou un jour férié. Déplacement au jour suivant.")
+                        current_date += timedelta(days=1)
+
+                    # Insérer le détail de planification uniquement si la date est dans la période et validée
+                    if current_date <= date_fin_planification:
+                        await cur.execute("""
+                            INSERT INTO PlanningDetails (planning_id, date_planification, statut, element_planification)
+                            VALUES (%s, %s, 'À venir', 'Traitement')
+                        """, (planning_id, current_date))
+                        details_added_count += 1
+                    else:
+                        # Si la date ajustée dépasse la date de fin, ne pas l'ajouter
+                        break
+
 
                     # Calculer la prochaine date de planification
                     if redondance_unit == 'jours':
@@ -81,29 +123,19 @@ async def ajouter_planning_traitement(pool, traitement_id: int, redondance_value
                     elif redondance_unit == 'semaines':
                         current_date += timedelta(weeks=redondance_value)
                     elif redondance_unit == 'mois':
-                        # Gérer le passage de mois avec précision
                         try:
-                            # Tente d'ajouter des mois en évitant les erreurs de fin de mois (ex: 31 février)
-                            # Simplement avancer le mois et l'année.
                             new_month = current_date.month + redondance_value
                             new_year = current_date.year + (new_month - 1) // 12
                             new_month = (new_month - 1) % 12 + 1
                             current_date = current_date.replace(year=new_year, month=new_month)
                         except ValueError:
-                            # Si le jour n'existe pas dans le nouveau mois (ex: 31 avril),
-                            # passer au dernier jour du nouveau mois.
-                            current_date = current_date.replace(day=1)
-                            new_month = current_date.month + redondance_value
-                            new_year = current_date.year + (new_month - 1) // 12
-                            new_month = (new_month - 1) % 12 + 1
-                            # Aller au premier jour du mois suivant, puis reculer d'un jour
-                            next_month_first_day = datetime(new_year, new_month, 1)
-                            current_date = next_month_first_day - timedelta(days=1)
+                            current_date = (current_date.replace(day=1) +
+                                            timedelta(days=32 * redondance_value)).replace(day=1) - timedelta(days=1)
                     elif redondance_unit == 'ans':
                         current_date = current_date.replace(year=current_date.year + redondance_value)
                     else:
                         print(f"**Avertissement:** Unité de redondance '{redondance_unit}' non valide. Arrêt de la planification.")
-                        break # Sortir de la boucle si l'unité n'est pas reconnue
+                        break
 
                 print(f"{details_added_count} détails de planification ajoutés pour le traitement {traitement_id}.")
 
@@ -113,10 +145,10 @@ async def ajouter_planning_traitement(pool, traitement_id: int, redondance_value
 async def main():
     pool = None
     try:
-        # Récupérer les identifiants de la base de données
+        # Get DB credentials
         host, port, user, password, database = await get_db_credentials()
 
-        # Créer le pool de connexions avec les identifiants fournis par l'utilisateur
+        # Create connection pool
         print(f"\nTentative de connexion à la base de données '{database}' sur {host}:{port} avec l'utilisateur '{user}'...")
         pool = await aiomysql.create_pool(
             host=host,
@@ -124,9 +156,9 @@ async def main():
             user=user,
             password=password,
             db=database,
-            autocommit=True, # Auto-commit les opérations
-            minsize=1,       # Taille minimale du pool
-            maxsize=5        # Taille maximale du pool
+            autocommit=True,
+            minsize=1,
+            maxsize=5
         )
         print("Connexion à la base de données établie avec succès.")
 
@@ -142,7 +174,6 @@ async def main():
                 print("**Erreur :** L'ID du traitement doit être un nombre entier.")
                 continue
 
-            # Demander la redondance (valeur et unité)
             redondance_value_input = input("Entrez la valeur de la redondance (ex: 1 pour chaque mois, 2 pour chaque 2 semaines) : ").strip()
             if not redondance_value_input:
                 break

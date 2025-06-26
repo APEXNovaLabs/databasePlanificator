@@ -10,8 +10,6 @@ from Contrat.fonctionnalités.connexionDB import DBConnection
 
 
 # --- Fonction de récupération des données de facture complètes pour un client ---
-# Cette fonction récupérera toutes les factures pour un client,
-# potentiellement filtrées par année.
 async def get_factures_data_for_client_comprehensive(pool, client_id: int, start_date: datetime.date = None,
                                                      end_date: datetime.date = None):
     conn = None
@@ -210,7 +208,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
     ws.cell(row=current_row, column=1,
             value=f"Rapport de Facturation pour la période : {report_period}").font = header_font
     # Fusionner les cellules pour le titre, en fonction du nombre maximum de colonnes du tableau
-    max_cols_for_merge = 8  # Pré-estimation du nombre de colonnes dans le tableau de données
+    max_cols_for_merge = 13  # This should match the number of columns in table_headers
     ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_cols_for_merge)
     ws.cell(row=current_row, column=1).alignment = Alignment(horizontal='center')
     current_row += 2  # Deux lignes vides après pour la séparation avec le tableau
@@ -239,10 +237,18 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         df_invoice_data = pd.DataFrame(data)
 
         # S'assurer que les dates sont au format 'YYYY-MM-DD' pour l'affichage
-        date_cols = ['Date de Contrat', 'Début Contrat', 'Fin Contrat', 'Date de Planification', 'Date de Facturation']
+        # Appliquer une fonction de formatage pour les dates/datetimes
+        def format_date_if_datetime(val):
+            if isinstance(val, (datetime.date, datetime.datetime)):
+                return val.strftime('%Y-%m-%d')
+            return val
+
+        # Appliquer le formatage aux colonnes de date spécifiques
+        date_cols = ['Date Contrat', 'Début Contrat', 'Fin Contrat', 'Date de Planification', 'Date de Facturation']
         for col in date_cols:
+            # Vérifier si la colonne existe dans le DataFrame avant d'essayer de la formater
             if col in df_invoice_data.columns:
-                df_invoice_data[col] = df_invoice_data[col].dt.strftime('%Y-%m-%d')
+                df_invoice_data[col] = df_invoice_data[col].apply(format_date_if_datetime)
 
         # Réordonner les colonnes pour l'affichage selon table_headers
         # Utiliser .reindex pour s'assurer que l'ordre est correct et que les colonnes manquantes sont gérées (bien que non attendu ici)
@@ -417,7 +423,6 @@ async def main_client_invoice_report():
                         print("Entrée invalide. Veuillez entrer un nombre pour l'année.")
                 break
             elif period_choice == '2':
-                # Récupérer les dates min/max des contrats pour ce client
                 conn_contracts = None
                 try:
                     conn_contracts = await pool.acquire()
@@ -433,8 +438,14 @@ async def main_client_invoice_report():
                         contract_dates = await cursor.fetchone()
 
                         if contract_dates and contract_dates['min_date_debut']:
-                            start_date = contract_dates['min_date_debut']
-                            end_date = contract_dates['max_date_fin']
+                            start_date_db = contract_dates['min_date_debut']
+                            end_date_db = contract_dates['max_date_fin']
+
+                            # Ensure these are date objects, not datetime or strings
+                            start_date = start_date_db.date() if isinstance(start_date_db,
+                                                                            datetime.datetime) else start_date_db
+                            end_date = end_date_db.date() if isinstance(end_date_db, datetime.datetime) else end_date_db
+
                             report_period_str = f"Durée_Contrats_{start_date.year}-{end_date.year}"
                         else:
                             print(

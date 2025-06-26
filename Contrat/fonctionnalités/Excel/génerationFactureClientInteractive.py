@@ -4,7 +4,7 @@ import asyncio
 import aiomysql
 from io import BytesIO
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill  # PatternFill est déjà importé, c'est bien !
 from openpyxl.utils import get_column_letter
 from Contrat.fonctionnalités.connexionDB import DBConnection
 
@@ -31,7 +31,7 @@ async def get_factures_data_for_client(pool, client_id: int, year: int, month: i
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
                                     WHERE hp.facture_id = f.facture_id
-                                    ORDER BY hp.change_date DESC, hp.history_id \
+                                    ORDER BY hp.change_date DESC, hp.history_id
                                                             DESC -- Prend le plus récent, history_id pour briser l'égalité
                                     LIMIT 1),
                                    f.montant
@@ -117,12 +117,12 @@ async def get_client_invoice_counts_and_months(pool):
         conn = await pool.acquire()
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT c.client_id, \
-                           CONCAT(c.nom, ' ', c.prenom) AS full_name, \
-                           COUNT(f.facture_id)          AS total_factures, \
-                           GROUP_CONCAT(DISTINCT \
-                                        CONCAT(YEAR(f.date_traitement), '-', LPAD(MONTH(f.date_traitement), 2, '0')) \
-                                        ORDER BY YEAR(f.date_traitement) DESC, MONTH(f.date_traitement) DESC SEPARATOR \
+                    SELECT c.client_id,
+                           CONCAT(c.nom, ' ', c.prenom) AS full_name,
+                           COUNT(f.facture_id)          AS total_factures,
+                           GROUP_CONCAT(DISTINCT
+                                        CONCAT(YEAR(f.date_traitement), '-', LPAD(MONTH(f.date_traitement), 2, '0'))
+                                        ORDER BY YEAR(f.date_traitement) DESC, MONTH(f.date_traitement) DESC SEPARATOR
                                         ', ')           AS facture_months
                     FROM Client c
                              LEFT JOIN Contrat co ON c.client_id = co.client_id
@@ -165,6 +165,10 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
                          top=Side(style='thin'),
                          bottom=Side(style='thin'))
 
+    # Définition des couleurs de remplissage
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Vert clair
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")  # Rouge clair
+
     current_row = 1
 
     # Informations du client (en-tête)
@@ -172,7 +176,8 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
         client_info = data[0]
         client_display_name = f"{client_info['client_nom']} {client_info['client_prenom']}"
         if client_info['client_categorie'] != 'Particulier':
-            client_display_name = f"{client_info['client_nom']} (Responsable: {client_info['client_prenom']})"
+            # Assuming 'prenom' field holds the 'Responsable' name for Organizations/Societies
+            client_display_name = f"{client_info['client_nom']} (Responsable: {client_info['client_prenom'] if client_info['client_prenom'] else 'N/A'})"
 
         ws.cell(row=current_row, column=1, value="Client :").font = bold_font
         ws.cell(row=current_row, column=2, value=client_display_name)
@@ -193,7 +198,7 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
     current_row += 1  # Ligne vide
 
     # Ligne "Facture du mois de:"
-    num_table_cols = 4  # Fixed number of columns for the main invoice table
+    num_table_cols = 5  # Adjusted to 5 to include 'Montant' in the count for merging
     ws.cell(row=current_row, column=1, value=f"Facture du mois de : {month_name_fr} {year}").font = header_font
     ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_table_cols)
     ws.cell(row=current_row, column=1).alignment = Alignment(horizontal='center')
@@ -201,7 +206,7 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
 
     # Tableau des traitements
     table_headers = ['Date de traitement', 'Traitement (Type)', 'Etat traitement', 'Etat paiement (Payée ou non)',
-                     'Montant']  # Added Montant
+                     'Montant']
 
     # Écrire les en-têtes du tableau
     for col_idx, header in enumerate(table_headers, 1):
@@ -223,11 +228,21 @@ def generate_facture_excel(data: list[dict], client_full_name: str, year: int, m
              'montant_facture']]
         df_display.rename(columns={'montant_facture': 'Montant'}, inplace=True)  # Rename for display
 
-        # Écrire les données du tableau
+        # Écrire les données du tableau et appliquer la couleur
         for r_idx, row_data in enumerate(df_display.values.tolist(), start=current_row):
+            # Déterminer la couleur de remplissage basée sur l'état de paiement
+            payment_status = row_data[3]  # 'Etat paiement (Payée ou non)' est la 4ème colonne (index 3)
+            fill_to_apply = None
+            if payment_status == 'Payé':
+                fill_to_apply = green_fill
+            elif payment_status == 'Non payé':
+                fill_to_apply = red_fill
+
             for c_idx, value in enumerate(row_data, 1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
                 cell.border = thin_border
+                if fill_to_apply:
+                    cell.fill = fill_to_apply
             current_row += 1
 
     current_row += 1  # Ligne vide avant les totaux
@@ -339,24 +354,30 @@ async def main_client_invoice():
 
         # --- Sélection du mois et de l'année pour la facture ---
         # Récupérer les mois spécifiques à ce client
-        conn = await pool.acquire()  # Re-acquire connection for specific months query
+        # IMPORTANT: Réacquérir la connexion est correct ici après une release précédente,
+        # ou mieux, passer le pool directement aux fonctions utilitaires si elles ne gèrent pas leur propre pool.
+        # Ici, get_client_invoice_counts_and_months et get_all_clients gèrent leur pool, donc c'est cohérent.
+        # Mais pour cette partie, nous sommes déjà dans main_client_invoice qui a un pool.
+        # Utilisez 'pool' directement.
         try:
-            async with conn.cursor(aiomysql.DictCursor) as cursor:
-                query_client_months = """
-                                      SELECT DISTINCT YEAR(f.date_traitement)  AS annee, \
-                                                      MONTH(f.date_traitement) AS mois
-                                      FROM Facture f
-                                               JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
-                                               JOIN Planning p ON pd.planning_id = p.planning_id
-                                               JOIN Traitement tr ON p.traitement_id = tr.traitement_id
-                                               JOIN Contrat co ON tr.contrat_id = co.contrat_id
-                                      WHERE co.client_id = %s
-                                      ORDER BY annee DESC, mois DESC; \
-                                      """
-                await cursor.execute(query_client_months, (client_id_for_invoice,))
-                client_available_months = await cursor.fetchall()
-        finally:
-            pool.release(conn)
+            async with pool.acquire() as conn_for_months:  # Use pool.acquire() inside try block
+                async with conn_for_months.cursor(aiomysql.DictCursor) as cursor:
+                    query_client_months = """
+                                          SELECT DISTINCT YEAR(f.date_traitement)  AS annee,
+                                                          MONTH(f.date_traitement) AS mois
+                                          FROM Facture f
+                                                   JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
+                                                   JOIN Planning p ON pd.planning_id = p.planning_id
+                                                   JOIN Traitement tr ON p.traitement_id = tr.traitement_id
+                                                   JOIN Contrat co ON tr.contrat_id = co.contrat_id
+                                          WHERE co.client_id = %s
+                                          ORDER BY annee DESC, mois DESC; \
+                                          """
+                    await cursor.execute(query_client_months, (client_id_for_invoice,))
+                    client_available_months = await cursor.fetchall()
+        except Exception as e:
+            print(f"Erreur lors de la récupération des mois disponibles pour le client : {e}")
+            client_available_months = []  # Ensure it's an empty list on error
 
         selected_year = None
         selected_month = None
@@ -370,7 +391,8 @@ async def main_client_invoice():
 
             while True:
                 try:
-                    choice = int(input("Choisissez un numéro de mois dans la liste ou '0' pour entrer manuellement : "))
+                    choice = int(
+                        input("Choisissez un numéro de mois dans la liste ou '0' pour entrer manuellement : ").strip())
                     if 0 < choice <= len(client_available_months):
                         selected_year = client_available_months[choice - 1]['annee']
                         selected_month = client_available_months[choice - 1]['mois']
@@ -378,9 +400,9 @@ async def main_client_invoice():
                     elif choice == 0:
                         while True:
                             try:
-                                year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ")
+                                year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ").strip()
                                 month_input = input(
-                                    "Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ")
+                                    "Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ").strip()
 
                                 selected_year = int(year_input)
                                 selected_month = int(month_input)
@@ -405,8 +427,9 @@ async def main_client_invoice():
                 f"\nAucune facture trouvée pour {client_full_name_for_invoice}. Veuillez entrer le mois et l'année manuellement.")
             while True:
                 try:
-                    year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ")
-                    month_input = input("Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ")
+                    year_input = input("Veuillez entrer l'année de la facture (ex: 2023) : ").strip()
+                    month_input = input(
+                        "Veuillez entrer le numéro du mois (1-12) de la facture (ex: 6 pour Juin) : ").strip()
 
                     selected_year = int(year_input)
                     selected_month = int(month_input)

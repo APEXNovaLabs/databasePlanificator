@@ -256,12 +256,18 @@ CREATE TABLE Remarque (
                           planning_detail_id INT NOT NULL,
                           facture_id INT,
                           contenu TEXT NOT NULL,
+                          issue TEXT,
+                          action TEXT NOT NULL,
                           date_remarque TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                           FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE SET NULL,
                           FOREIGN KEY (client_id) REFERENCES Client(client_id) ON DELETE CASCADE,
                           FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE
 );
-
+/*
+    contenu pour contenir les remarques effectués
+    issue pour un cas isolé, en cas de problème ou erreur lors du traitement
+    action pour contenire les actions entrepris à chaque traitement
+*/
 -- Table Signalement (Pour un signalement d'avancement ou de décalage)
 CREATE TABLE Signalement (
                              signalement_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -280,7 +286,9 @@ CREATE TABLE Historique (
                             signalement_id INT,
                             date_historique TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             contenu TEXT NOT NULL,
-                            FOREIGN KEY (contenu) REFERENCES Remarque(contenu) ON DELETE CASCADE SET NULL,
+                            issue TEXT,
+                            action TEXT NOT NULL,
+                            FOREIGN KEY (contenu, issue, action) REFERENCES Remarque(contenu, issue, action) ON DELETE SET NULL,
                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE SET NULL,
                             FOREIGN KEY (signalement_id) REFERENCES Signalement(signalement_id) ON DELETE SET NULL,
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE

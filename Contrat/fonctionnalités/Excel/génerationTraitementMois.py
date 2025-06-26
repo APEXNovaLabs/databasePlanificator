@@ -91,8 +91,7 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     # Titre du rapport
     ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
     ws.cell(row=1, column=1).alignment = center_align
-    # Ajustez le num_data_cols pour inclure la nouvelle colonne 'Etat traitement'
-    num_data_cols = 7 # Était 6, maintenant 7 avec 'Etat traitement'
+    num_data_cols = 7
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
 
     # Nombre total de traitements

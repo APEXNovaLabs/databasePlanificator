@@ -4,7 +4,7 @@ import asyncio
 import aiomysql
 from io import BytesIO
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, PatternFill # Importez PatternFill ici
 from openpyxl.utils import get_column_letter
 from Contrat.fonctionnalités.connexionDB import DBConnection
 
@@ -20,7 +20,8 @@ async def get_traitements_for_month(pool, year: int, month: int):
                            tt.categorieTraitement       AS `Catégorie du traitement`,
                            CONCAT(c.nom, ' ', c.prenom) AS `Client concerné`,
                            c.categorie                  AS `Catégorie du client`,
-                           c.axe                        AS `Axe du client`
+                           c.axe                        AS `Axe du client`,
+                           pd.statut                    AS `Etat traitement` -- AJOUT DE CETTE COLONNE POUR RÉCUPÉRER LE STATUT
                     FROM PlanningDetails pd
                              JOIN
                          Planning p ON pd.planning_id = p.planning_id
@@ -83,10 +84,14 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
     header_font = Font(bold=True, size=14)
     center_align = Alignment(horizontal='center', vertical='center')
 
+    # Définition des couleurs de remplissage
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") # Rouge clair
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid") # Vert clair
+
     # Titre du rapport
     ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
     ws.cell(row=1, column=1).alignment = center_align
-    num_data_cols = 6
+    num_data_cols = 7
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
 
     # Nombre total de traitements
@@ -102,13 +107,34 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
         ws.cell(row=5, column=1, value="Aucun traitement trouvé pour ce mois.")
     else:
         headers = df.columns.tolist()
+        # Trouvez l'index de la colonne 'Etat traitement'
+        # Note: Cette méthode dépend de l'ordre des colonnes du DataFrame.
+        # Il est plus robuste d'itérer sur les dictionnaires 'data' directement.
+        status_col_index = -1
+        try:
+            status_col_index = headers.index('Etat traitement') # Trouvez l'index de la colonne de statut
+        except ValueError:
+            print("AVERTISSEMENT: La colonne 'Etat traitement' n'a pas été trouvée dans les données. Les couleurs ne seront pas appliquées.")
+
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=5, column=col_idx, value=header)
             cell.font = bold_font
 
-        for r_idx, row_data in enumerate(df.values.tolist(), start=6):
-            for c_idx, value in enumerate(row_data, 1):
-                ws.cell(row=r_idx, column=c_idx, value=value)
+        # Itérer sur les données (dictionnaires) pour écrire les lignes et appliquer la couleur
+        for r_idx, row_dict in enumerate(data, start=6): # Utilisez 'data' qui est une liste de dictionnaires
+            for c_idx, col_name in enumerate(headers, 1): # Itérez sur les noms de colonnes pour l'ordre
+                value = row_dict.get(col_name) # Obtenez la valeur par nom de colonne
+                cell = ws.cell(row=r_idx, column=c_idx, value=value)
+
+                # Appliquer la couleur si c'est la colonne 'Etat traitement' et si la valeur est connue
+                if col_name == 'Etat traitement': # Assurez-vous que le nom de colonne correspond
+                    if value == 'Effectué':
+                        cell.fill = red_fill
+                    elif value == 'À venir':
+                        cell.fill = green_fill
+                    # Ajoutez d'autres conditions si vous avez d'autres statuts à colorer
+                # else:
+                #     cell.fill = PatternFill(fill_type=None) # Optionnel: Réinitialiser la couleur pour les autres colonnes
 
     max_col_for_width = len(df.columns) if not df.empty else num_data_cols
 

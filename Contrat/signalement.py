@@ -6,6 +6,7 @@ async def create_signalement(pool, planning_detail_id, motif, type_signalement):
             await conn.commit()
             return cur.lastrowid
 
+# A corriger: traitement_id, date_debut, date_fin, type_traitement
 async def read_signalement(pool, signalement_id):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:

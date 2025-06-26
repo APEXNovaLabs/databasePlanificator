@@ -280,6 +280,7 @@ CREATE TABLE Historique (
                             signalement_id INT,
                             date_historique TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             contenu TEXT NOT NULL,
+                            FOREIGN KEY (contenu) REFERENCES Remarque(contenu) ON DELETE CASCADE SET NULL,
                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE SET NULL,
                             FOREIGN KEY (signalement_id) REFERENCES Signalement(signalement_id) ON DELETE SET NULL,
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE

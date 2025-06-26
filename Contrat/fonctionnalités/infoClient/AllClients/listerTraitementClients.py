@@ -2,7 +2,9 @@ import asyncio
 import aiomysql
 
 async def get_db_credentials():
-    host = input("Entrez l'adresse du serveur MySQL (par exemple, localhost): ")
+    host = input("Entrez l'adresse du serveur MySQL (par défaut, localhost): ")
+    if not host:
+        host = "localhost"
     port_str = input("Entrez le port du serveur MySQL (par défaut: 3306): ")
     try:
         port = int(port_str) if port_str else 3306
@@ -11,7 +13,9 @@ async def get_db_credentials():
         port = 3306
     user = input("Entrez le nom d'utilisateur MySQL: ")
     password = input("Entrez le mot de passe MySQL: ")
-    database = input("Entrez le nom de la base de données MySQL (par exemple, Planificator): ")
+    database = input("Entrez le nom de la base de données MySQL (Planificator): ")
+    if not database:
+        database = "Planificator"
     return host, port, user, password, database
 
 async def get_all_clients_with_treatment_count(host: str, port: int, user: str, password: str, database: str):

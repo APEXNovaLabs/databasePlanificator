@@ -1,10 +1,6 @@
 import aiomysql
 import asyncio
 
-# Assurez-vous que ce chemin est correct si DBConnection est dans un autre fichier.
-# Si vous n'utilisez pas un fichier externe pour DBConnection, vous pouvez le retirer.
-# from Contrat.fonctionnalités.connexionDB import DBConnection
-
 async def get_db_credentials():
     """Demande à l'utilisateur les identifiants de connexion à la base de données."""
     print("\nVeuillez entrer les informations de connexion à la base de données MySQL:")

@@ -2,9 +2,6 @@ import aiomysql
 import asyncio
 from datetime import datetime, timedelta
 
-# Assume DBConnection is defined elsewhere or create a placeholder if it's external
-# from Contrat.fonctionnalités.connexionDB import DBConnection
-
 async def get_db_credentials():
     """Demande à l'utilisateur les identifiants de connexion à la base de données."""
     print("\nVeuillez entrer les informations de connexion à la base de données MySQL:")

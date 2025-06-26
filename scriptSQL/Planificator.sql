@@ -288,7 +288,6 @@ CREATE TABLE Historique (
                             contenu TEXT NOT NULL,
                             issue TEXT,
                             action TEXT NOT NULL,
-                            FOREIGN KEY (contenu, issue, action) REFERENCES Remarque(contenu, issue, action) ON DELETE SET NULL,
                             FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE SET NULL,
                             FOREIGN KEY (signalement_id) REFERENCES Signalement(signalement_id) ON DELETE SET NULL,
                             FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE

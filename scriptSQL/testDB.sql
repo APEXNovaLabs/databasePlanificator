@@ -128,7 +128,7 @@ INSERT INTO PlanningDetails (planning_id, date_planification, statut) VALUES
 -- Planning 2 (trimestriel)
 (2, '2024-01-25', 'Effectué'), (2, '2024-04-25', 'Effectué'), (2, '2024-07-25', 'À venir'),
 -- Planning 3 (mensuel, indéterminé)
-(3, '2023-12-01', 'Effectué'), (3, '2024-01-01', 'Effectué'), (3, '2024-02-01', 'Effectué'), (3, '2024-03-01', 'Effectué'), (3, '2024-04-01', 'Effectué'), (3, '2024-05-01', 'Effectué'), (3, '2024-06-01', 'Effectué'), (3, '2024-07-01', 'À venir'),
+(3, '2023-12-01', 'Effectué'), (3, '2024-01-01', 'Effectué'), (3, '2024-02-01', 'Effectué'), (3, '2024-03-01', 'Effectué'), (3, '2024-04-01', 'Effectué'), (3, '2024-05-02', 'Effectué'), (3, '2024-06-01', 'Effectué'), (3, '2024-07-01', 'À venir'), (3, '2024-08-01', 'À venir'), (3, '2024-09-01', 'À venir'), (3, '2024-10-01', 'À venir'), (3, '2024-11-03', 'À venir'), (3, '2024-12-02', 'À venir'), (3, '2025-01-08', 'À venir'), (3, '2024-02-02', 'À venir'), (3, '2024-03-01', 'À venir'),
 -- Planning 4 (mensuel)
 (4, '2024-02-05', 'Effectué'), (4, '2024-03-05', 'Effectué'), (4, '2024-04-05', 'Effectué'), (4, '2024-05-05', 'Effectué'), (4, '2024-06-05', 'Effectué'), (4, '2024-07-05', 'À venir'),
 -- Planning 5 (bimensuel)
@@ -152,7 +152,7 @@ INSERT INTO PlanningDetails (planning_id, date_planification, statut) VALUES
 -- Planning 15 (mensuel, indéterminé) - Client 10
 (15, '2024-06-20', 'Effectué'), (15, '2024-07-20', 'À venir'),
 -- Planning 16 (mensuel) - Client 11
-(16, '2024-06-25', 'Effectué'), (16, '2024-07-25', 'À venir'),
+(16, '2024-06-25', 'Effectué'), (16, '2024-07-25', 'À venir'), (16, '2024-08-25', 'À venir'), (16, '2024-09-25', 'À venir'), (16, '2024-10-25', 'À venir'), (16, '2024-11-25', 'À venir'), (16, '2024-12-24', 'À venir'),
 -- Planning 17 (bimensuel) - Client 12
 (17, '2024-07-01', 'À venir'),
 -- Planning 18 (semestriel, indéterminé) - Client 13

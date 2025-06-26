@@ -334,14 +334,6 @@ async def handle_option_2(pool, planning_data): # Changed conn to pool
                 ))
                 print("Entrée d'historique enregistrée pour le signalement.")
 
-    except aiomysql.Error as e:
-        print(f"**Erreur lors de la modification du planning :** {e}")
-        # La ligne suivante n'est pas nécessaire si autocommit=True sur le pool.
-        # await conn.rollback()
-    except Exception as e:
-        print(f"**Une erreur inattendue est survenue :** {e}")
-
-
 async def main():
     pool = None
     try:

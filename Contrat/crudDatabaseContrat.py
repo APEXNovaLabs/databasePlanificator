@@ -123,7 +123,7 @@ async def main():
                             prenom = None
                             nif = None
                             stat = None
-                            axe = input("Axe : ").strip()  # Assuming 'axe' is always needed for client
+                            axe = input("Axe : ").strip()
                             categorie_choisie = None
 
                             if categories_client:
@@ -142,7 +142,12 @@ async def main():
                                         print("Entrée invalide. Veuillez entrer un numéro.")
                             else:
                                 print("Aucune catégorie trouvée. Entrez-la manuellement.")
-                                categorie_choisie = input("Entrez la catégorie manuellement : ").strip()
+                                while True:
+                                    categorie_choisie = input("Entrez la catégorie manuellement : ").strip()
+                                    if categorie_choisie:  # Si la saisie n'est pas vide, sortir de la boucle
+                                        break
+                                    else:
+                                        print("La catégorie ne peut pas être vide. Veuillez la saisir.")
 
                             if categorie_choisie == "Particulier":
                                 prenom = input("Prénom (facultatif) : ").strip() or None
@@ -160,7 +165,6 @@ async def main():
                             result_id = await func(pool, nom, prenom, email, telephone, adresse, categorie_choisie, nif,
                                                    stat, axe)
                             print(f"{table_name} créé avec l'ID : {result_id}")
-
                         elif table_name == "Contrat":
                             client_id = int(input("ID du client : ").strip())
                             date_contrat_str = input("Date du contrat (AAAA-MM-JJ) : ").strip()

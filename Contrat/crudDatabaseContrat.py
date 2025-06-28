@@ -435,18 +435,50 @@ async def main():
 
                     # --- READ Operations ---
                     elif operation_key == 'read':
-                        id_a_lire = int(input(f"ID du {table_name} à lire : ").strip())
-                        result = await func(pool, id_a_lire)
-                        if result:
-                            print("\n--- Détails ---")
-                            # Assuming result is a dictionary or an object with attributes
-                            if isinstance(result, dict):
-                                for key, value in result.items():
-                                    print(f"{key}: {value}")
+                        if table_name == "Client":
+                            print("\n--- Options de lecture pour Client ---")
+                            print("1. Lire un client par ID")
+                            print("2. Lire tous les clients")
+                            read_option = input("Choisissez une option (1-2) : ").strip()
+
+                            if read_option == '1':
+                                client_id_to_read = int(input("ID du client à lire : ").strip())
+                                # Appel à read_client avec un ID spécifique
+                                result = await func(pool, client_id_to_read)  # func est read_client
+                                if result:
+                                    print("\n--- Détails du Client ---")
+                                    # result est un dictionnaire pour un client unique
+                                    for key, value in result.items():
+                                        print(f"{key}: {value}")
+                                else:
+                                    print(f"Aucun client trouvé avec l'ID {client_id_to_read}.")
+                            elif read_option == '2':
+                                # Appel à read_client sans ID pour obtenir tous les clients
+                                all_clients = await func(pool, None)  # func est read_client
+                                if all_clients:
+                                    print("\n--- Tous les Clients ---")
+                                    for client in all_clients:
+                                        print("-" * 20)  # Séparateur pour chaque client
+                                        for key, value in client.items():
+                                            print(f"{key}: {value}")
+                                    print("-" * 20)
+                                else:
+                                    print("Aucun client trouvé dans la base de données.")
                             else:
-                                print(result)  # Fallback if not a dict (e.g., direct string representation)
+                                print("Option de lecture invalide.")
                         else:
-                            print(f"Aucun {table_name} trouvé avec l'ID {id_a_lire}.")
+                            # Logique existante pour les autres tables (lecture par ID seulement)
+                            id_a_lire = int(input(f"ID du {table_name} à lire : ").strip())
+                            result = await func(pool, id_a_lire)
+                            if result:
+                                print("\n--- Détails ---")
+                                if isinstance(result, dict):
+                                    for key, value in result.items():
+                                        print(f"{key}: {value}")
+                                else:
+                                    print(result)
+                            else:
+                                print(f"Aucun {table_name} trouvé avec l'ID {id_a_lire}.")
 
                     # --- UPDATE Operations ---
                     elif operation_key == 'update':

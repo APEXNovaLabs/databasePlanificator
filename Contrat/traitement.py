@@ -1,3 +1,6 @@
+import aiomysql
+
+
 async def typestraitement(pool):
     async with pool.acquire() as conn:
         async with conn.cursor() as cursor:
@@ -17,12 +20,19 @@ async def creation_traitement(pool, contrat_id, id_type_traitement):
             return cur.lastrowid
 
 async def obtenir_types_traitement(pool):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT typeTraitement FROM TypeTraitement")
-            resultats = await cursor.fetchall()
-            return [resultat[0] for resultat in resultats]
-
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor: # Use DictCursor here!
+            await cursor.execute("SELECT id_type_traitement, typeTraitement FROM TypeTraitement ORDER BY typeTraitement")
+            types_data = await cursor.fetchall() # This will be a list of dictionaries like [{'id_type_traitement': 1, 'typeTraitement': 'Désinfection'}]
+            return types_data
+    except Exception as e:
+        print(f"Erreur lors de la récupération des types de traitement : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
 async def read_traitement(pool, traitement_id):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:

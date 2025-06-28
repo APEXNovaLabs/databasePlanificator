@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 from Contrat.fonctionnalités.connexionDB import DBConnection
 
 # --- Fonction de récupération des traitements pour un mois donné ---
-async def get_traitements_for_month(pool, year: int, month: int):
+async def obtenirTraitementParMois(pool, year: int, month: int):
     conn = None
     try:
         conn = await pool.acquire()
@@ -48,7 +48,7 @@ async def get_traitements_for_month(pool, year: int, month: int):
             pool.release(conn)
 
 # --- Fonction de récupération de toutes les combinaisons année-mois contenant des traitements ---
-async def get_all_existing_treatment_months(pool):
+async def obtenirToutTraitementDuMois(pool):
     conn = None
     try:
         conn = await pool.acquire()
@@ -71,7 +71,7 @@ async def get_all_existing_treatment_months(pool):
             pool.release(conn)
 
 # --- Fonction pour générer le fichier Excel des traitements ---
-def generate_traitements_excel(data: list[dict], year: int, month: int):
+def generationTraitementExcel(data: list[dict], year: int, month: int):
     month_name_fr = datetime.date(year, month, 1).strftime('%B').capitalize()
     file_name = f"traitements-{month_name_fr}-{year}.xlsx"
 
@@ -107,9 +107,6 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
         ws.cell(row=5, column=1, value="Aucun traitement trouvé pour ce mois.")
     else:
         headers = df.columns.tolist()
-        # Trouvez l'index de la colonne 'Etat traitement'
-        # Note: Cette méthode dépend de l'ordre des colonnes du DataFrame.
-        # Il est plus robuste d'itérer sur les dictionnaires 'data' directement.
         status_col_index = -1
         try:
             status_col_index = headers.index('Etat traitement') # Trouvez l'index de la colonne de statut
@@ -120,19 +117,17 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
             cell = ws.cell(row=5, column=col_idx, value=header)
             cell.font = bold_font
 
-        # Itérer sur les données (dictionnaires) pour écrire les lignes et appliquer la couleur
-        for r_idx, row_dict in enumerate(data, start=6): # Utilisez 'data' qui est une liste de dictionnaires
-            for c_idx, col_name in enumerate(headers, 1): # Itérez sur les noms de colonnes pour l'ordre
-                value = row_dict.get(col_name) # Obtenez la valeur par nom de colonne
+        for r_idx, row_dict in enumerate(data, start=6):
+            for c_idx, col_name in enumerate(headers, 1):
+                value = row_dict.get(col_name)
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
                 # Appliquer la couleur si c'est la colonne 'Etat traitement' et si la valeur est connue
-                if col_name == 'Etat traitement': # Assurez-vous que le nom de colonne correspond
+                if col_name == 'Etat traitement':
                     if value == 'Effectué':
                         cell.fill = red_fill
                     elif value == 'À venir':
                         cell.fill = green_fill
-                    # Ajoutez d'autres conditions si vous avez d'autres statuts à colorer
                 # else:
                 #     cell.fill = PatternFill(fill_type=None) # Optionnel: Réinitialiser la couleur pour les autres colonnes
 
@@ -158,7 +153,7 @@ def generate_traitements_excel(data: list[dict], year: int, month: int):
         print(f"Erreur lors de la génération du fichier Excel des traitements : {e}")
 
 # --- Fonction principale pour exécuter le rapport des traitements ---
-async def main_traitements_report():
+async def generationRapportMain():
     pool = None
     try:
         pool = await DBConnection()
@@ -166,14 +161,14 @@ async def main_traitements_report():
             print("Échec de la connexion à la base de données. Annulation de l'opération.")
             return
 
-        all_existing_months_data = await get_all_existing_treatment_months(pool)
+        donnéesMoisExistant = await obtenirToutTraitementDuMois(pool)
 
-        selected_year = None
-        selected_month = None
+        annéeChoisie = None
+        moisChoisie = None
 
-        if all_existing_months_data:
+        if donnéesMoisExistant:
             # 1. Obtenir les années distinctes
-            distinct_years = sorted(list(set(entry['annee'] for entry in all_existing_months_data)), reverse=True)
+            distinct_years = sorted(list(set(entry['annee'] for entry in donnéesMoisExistant)), reverse=True)
 
             print("\nAnnées contenant des traitements déjà enregistrés :")
             for i, year in enumerate(distinct_years):
@@ -185,15 +180,15 @@ async def main_traitements_report():
                 try:
                     choice = int(input("Choisissez un numéro d'année dans la liste ou '0' pour entrer manuellement : "))
                     if 0 < choice <= len(distinct_years):
-                        selected_year = distinct_years[choice - 1]
+                        annéeChoisie = distinct_years[choice - 1]
                         chosen_year_index = choice - 1
                         break
                     elif choice == 0:
                         while True:
                             try:
-                                year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
-                                selected_year = int(year_input)
-                                if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                                inputAnnée = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                                annéeChoisie = int(inputAnnée)
+                                if not (2000 <= annéeChoisie <= datetime.datetime.now().year + 5):
                                     print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
                                     continue
                                 break
@@ -206,28 +201,28 @@ async def main_traitements_report():
                     print("Entrée invalide. Veuillez entrer un numéro.")
 
             # 2. Après avoir choisi l'année, filtrer et afficher les mois disponibles pour cette année
-            if selected_year:
-                months_for_selected_year = sorted(list(set(entry['mois'] for entry in all_existing_months_data if entry['annee'] == selected_year)), reverse=True)
+            if annéeChoisie:
+                months_for_selected_year = sorted(list(set(entry['mois'] for entry in donnéesMoisExistant if entry['annee'] == annéeChoisie)), reverse=True)
 
                 if months_for_selected_year:
-                    print(f"\nMois disponibles pour l'année {selected_year} :")
+                    print(f"\nMois disponibles pour l'année {annéeChoisie} :")
                     for i, month_num in enumerate(months_for_selected_year):
-                        month_name = datetime.date(selected_year, month_num, 1).strftime('%B').capitalize()
+                        month_name = datetime.date(annéeChoisie, month_num, 1).strftime('%B').capitalize()
                         print(f"  {i + 1}. {month_name} ({month_num})")
                     print("  0. Entrer un autre mois manuellement")
 
                     while True:
                         try:
-                            choice = int(input(f"Choisissez un numéro de mois pour {selected_year} ou '0' pour entrer manuellement : "))
+                            choice = int(input(f"Choisissez un numéro de mois pour {annéeChoisie} ou '0' pour entrer manuellement : "))
                             if 0 < choice <= len(months_for_selected_year):
-                                selected_month = months_for_selected_year[choice - 1]
+                                moisChoisie = months_for_selected_year[choice - 1]
                                 break
                             elif choice == 0:
                                 while True:
                                     try:
                                         month_input = input("Veuillez entrer le numéro du mois (1-12) : ")
-                                        selected_month = int(month_input)
-                                        if not (1 <= selected_month <= 12):
+                                        moisChoisie = int(month_input)
+                                        if not (1 <= moisChoisie <= 12):
                                             print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
                                             continue
                                         break
@@ -238,48 +233,47 @@ async def main_traitements_report():
                                 print("Choix invalide. Veuillez réessayer.")
                         except ValueError:
                             print("Entrée invalide. Veuillez entrer un numéro.")
-                else: # No months found for the selected year (e.g., if user chose a future year manually)
-                    print(f"\nAucun traitement trouvé pour l'année {selected_year}. Veuillez entrer le mois manuellement.")
+                else: # Entrée manuelle de l'année
+                    print(f"\nAucun traitement trouvé pour l'année {annéeChoisie}. Veuillez entrer le mois manuellement.")
                     while True:
                         try:
                             month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
-                            selected_month = int(month_input)
-                            if not (1 <= selected_month <= 12):
+                            moisChoisie = int(month_input)
+                            if not (1 <= moisChoisie <= 12):
                                 print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
                                 continue
                             break
                         except ValueError:
                             print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
 
-        else: # No data at all in the database
+        else: # Aucune données dans la BD
             print("\nAucun traitement trouvé dans la base de données. Veuillez entrer le mois et l'année manuellement.")
             while True:
                 try:
-                    year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                    inputAnnée = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
                     month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
 
-                    selected_year = int(year_input)
-                    selected_month = int(month_input)
+                    annéeChoisie = int(inputAnnée)
+                    moisChoisie = int(month_input)
 
-                    if not (1 <= selected_month <= 12):
+                    if not (1 <= moisChoisie <= 12):
                         print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
                         continue
-                    if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                    if not (2000 <= annéeChoisie <= datetime.datetime.now().year + 5):
                         print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
                         continue
                     break
                 except ValueError:
                     print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
 
-        # Final check if selected_year and selected_month are set
-        if selected_year is None or selected_month is None:
+        if annéeChoisie is None or moisChoisie is None:
             print("Sélection de l'année ou du mois annulée. Fin du rapport.")
             return
 
         print(
-            f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
-        traitements_data = await get_traitements_for_month(pool, selected_year, selected_month)
-        generate_traitements_excel(traitements_data, selected_year, selected_month)
+            f"\nPréparation du rapport des traitements pour {datetime.date(annéeChoisie, moisChoisie, 1).strftime('%B').capitalize()} {annéeChoisie}...")
+        traitements_data = await obtenirTraitementParMois(pool, annéeChoisie, moisChoisie)
+        generationTraitementExcel(traitements_data, annéeChoisie, moisChoisie)
 
     except Exception as e:
         print(f"Une erreur inattendue est survenue dans le script principal : {e}")
@@ -288,4 +282,4 @@ async def main_traitements_report():
             await pool.close()
 
 if __name__ == "__main__":
-    asyncio.run(main_traitements_report())
+    asyncio.run(generationRapportMain())

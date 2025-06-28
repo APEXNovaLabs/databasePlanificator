@@ -1,7 +1,7 @@
 import aiomysql
 import asyncio
 
-async def get_db_credentials():
+async def obtenirInfoBD():
     """Demande à l'utilisateur les identifiants de connexion à la base de données."""
     print("\nVeuillez entrer les informations de connexion à la base de données MySQL:")
     host = input("Entrez l'adresse du serveur MySQL (par défaut, localhost): ").strip()
@@ -88,7 +88,7 @@ async def main():
     pool = None # Initialiser le pool à None
     try:
         # Récupérer les identifiants de la base de données
-        host, port, user, password, database = await get_db_credentials()
+        host, port, user, password, database = await obtenirInfoBD()
 
         # Créer le pool de connexions avec les identifiants fournis par l'utilisateur
         print(f"\nTentative de connexion à la base de données '{database}' sur {host}:{port} avec l'utilisateur '{user}'...")
@@ -100,30 +100,28 @@ async def main():
             db=database,
             autocommit=True, # S'assurer que les modifications sont auto-validées
             minsize=1,       # Taille minimale du pool
-            maxsize=5        # Taille maximale du pool
+            maxsize=10        # Taille maximale du pool
         )
         print("Connexion à la base de données établie avec succès.")
 
         while True:
             client_id_input = input("\nEntrez l'ID du client pour afficher le planning (laissez vide pour quitter): ").strip()
             if not client_id_input:
-                break # Quitter la boucle si l'utilisateur n'entre rien
-
+                break
             try:
                 client_id = int(client_id_input)
             except ValueError:
                 print("Erreur : L'ID du client doit être un nombre entier. Veuillez réessayer.")
-                continue # Recommencer la boucle
+                continue
 
             traitement_id_input = input("Entrez l'ID du traitement pour afficher le planning (laissez vide pour quitter): ").strip()
             if not traitement_id_input:
-                break # Quitter la boucle si l'utilisateur n'entre rien
-
+                break
             try:
                 traitement_id = int(traitement_id_input)
             except ValueError:
                 print("Erreur : L'ID du traitement doit être un nombre entier. Veuillez réessayer.")
-                continue # Recommencer la boucle
+                continue
 
             await afficher_planning_traitement(pool, client_id, traitement_id)
 

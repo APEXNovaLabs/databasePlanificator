@@ -21,18 +21,37 @@ async def create_planning(pool, traitement_id, redondance, date_debut_planificat
             await conn.commit()
             return cur.lastrowid
 
+
 async def obtenir_redondances(pool):
-    """Récupère les options de redondance disponibles."""
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SHOW COLUMNS FROM Planning LIKE 'redondance'")
-            resultat = await cursor.fetchone()
-            if resultat:
-                enum_str = resultat[1].split("(")[1].split(")")[0]
-                enum_str = [int(x) for x in enum_str.split(",")]
-                return enum_str
-            else:
-                return []
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:  # Use DictCursor here!
+            # If 'redondance' is an ENUM column in your Planning table:
+            query = """
+                    SELECT COLUMN_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE() \
+                      AND TABLE_NAME = 'Planning' \
+                      AND COLUMN_NAME = 'redondance' \
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchone()
+            if result and 'COLUMN_TYPE' in result and result['COLUMN_TYPE'].startswith("enum("):
+                enum_str = result['COLUMN_TYPE']
+                return [val.strip("'") for val in enum_str[len("enum("):-1].split(',')]
+
+            # OR, if redondances come from a separate lookup table (e.g., `RedondanceOptions`):
+            # await cursor.execute("SELECT redondance_name FROM RedondanceOptions ORDER BY redondance_name")
+            # return [row['redondance_name'] for row in await cursor.fetchall()]
+
+            return []  # Return empty list if no redondances found
+    except Exception as e:
+        print(f"Erreur lors de la récupération des redondances : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
 
 async def read_planning(pool, planning_id):
     """Lit un planning à partir de son ID."""

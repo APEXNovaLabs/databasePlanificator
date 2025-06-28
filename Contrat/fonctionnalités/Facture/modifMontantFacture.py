@@ -6,7 +6,7 @@ from Contrat.fonctionnalités.connexionDB import DBConnection
 
 # --- Fonctions utilitaires (réutilisées de vos scripts précédents) ---
 
-async def get_all_clients(pool):
+async def obtenirTousClients(pool):
     conn = None
     try:
         conn = await pool.acquire()
@@ -26,7 +26,7 @@ async def get_all_clients(pool):
         if conn:
             pool.release(conn)
 
-async def get_client_id_by_name(pool, client_name: str):
+async def obtenirIDCLientsParNom(pool, client_name: str):
     conn = None
     try:
         conn = await pool.acquire()
@@ -49,7 +49,7 @@ async def get_client_id_by_name(pool, client_name: str):
 
 # --- Nouvelles fonctions spécifiques à la modification de facture ---
 
-async def get_client_invoices_summary(pool, client_id: int):
+async def obtentionRésuméFactureClient(pool, client_id: int):
     """Récupère un résumé des factures pour un client donné."""
     conn = None
     try:
@@ -79,7 +79,7 @@ async def get_client_invoices_summary(pool, client_id: int):
         if conn:
             pool.release(conn)
 
-async def get_invoice_current_amount(pool, facture_id: int):
+async def obtentionRésuméMontantActuel(pool, facture_id: int):
     """Récupère le montant actuel d'une facture."""
     conn = None
     try:
@@ -96,7 +96,7 @@ async def get_invoice_current_amount(pool, facture_id: int):
         if conn:
             pool.release(conn)
 
-async def update_invoice_amount_and_log_history(pool, facture_id: int, old_amount: float, new_amount: float, changed_by: str = 'System'):
+async def majMontantEtHistorique(pool, facture_id: int, old_amount: float, new_amount: float, changed_by: str = 'System'):
     """
     Met à jour le montant d'une facture et enregistre l'ancien/nouveau montant
     dans la table d'historique.
@@ -133,7 +133,7 @@ async def update_invoice_amount_and_log_history(pool, facture_id: int, old_amoun
             pool.release(conn)
 
 # --- Fonction principale ---
-async def main_modify_invoice_amount():
+async def mainModificationMontant():
     pool = None
     try:
         pool = await DBConnection()
@@ -144,7 +144,7 @@ async def main_modify_invoice_amount():
         print("\n--- Modification du montant de la facture ---")
 
         # 1. Sélectionner le client
-        clients = await get_all_clients(pool)
+        clients = await obtenirTousClients(pool)
         if not clients:
             print("Aucun client trouvé dans la base de données.")
             return
@@ -155,34 +155,34 @@ async def main_modify_invoice_amount():
             print(f"{i + 1}. {client['full_name']}")
             client_map[str(i + 1)] = client
 
-        selected_client_id = None
-        selected_client_name = None
-        while selected_client_id is None:
-            choice = input(
+        idClientChoisi = None
+        nomCLientChoisi = None
+        while idClientChoisi is None:
+            choix = input(
                 "\nVeuillez entrer le numéro du client dans la liste, ou son nom complet (Nom Prénom) : ").strip()
-            if choice.isdigit():
-                if choice in client_map:
-                    selected_client = client_map[choice]
-                    selected_client_id = selected_client['client_id']
-                    selected_client_name = selected_client['full_name']
-                    print(f"Client sélectionné : {selected_client_name}")
+            if choix.isdigit():
+                if choix in client_map:
+                    selected_client = client_map[choix]
+                    idClientChoisi = selected_client['client_id']
+                    nomCLientChoisi = selected_client['full_name']
+                    print(f"Client sélectionné : {nomCLientChoisi}")
                 else:
                     print("Numéro invalide. Veuillez réessayer.")
             else:
-                selected_client_name = choice
-                selected_client_id = await get_client_id_by_name(pool, selected_client_name)
-                if selected_client_id is None:
-                    print(f"Client '{selected_client_name}' non trouvé. Veuillez vérifier le nom et réessayer.")
+                nomCLientChoisi = choix
+                idClientChoisi = await obtenirIDCLientsParNom(pool, nomCLientChoisi)
+                if idClientChoisi is None:
+                    print(f"Client '{nomCLientChoisi}' non trouvé. Veuillez vérifier le nom et réessayer.")
                 else:
-                    print(f"Client trouvé : {selected_client_name}")
+                    print(f"Client trouvé : {nomCLientChoisi}")
 
         # 2. Récupérer et afficher les factures du client
-        invoices = await get_client_invoices_summary(pool, selected_client_id)
+        invoices = await obtentionRésuméFactureClient(pool, idClientChoisi)
         if not invoices:
-            print(f"Aucune facture trouvée pour le client '{selected_client_name}'.")
+            print(f"Aucune facture trouvée pour le client '{nomCLientChoisi}'.")
             return
 
-        print(f"\nFactures de {selected_client_name} :")
+        print(f"\nFactures de {nomCLientChoisi} :")
         invoice_map = {}
         for i, inv in enumerate(invoices):
             print(f"{i + 1}. ID Facture: {inv['facture_id']}, Date: {inv['date_traitement'].strftime('%Y-%m-%d')}, "
@@ -199,7 +199,7 @@ async def main_modify_invoice_amount():
                 print("Numéro de facture invalide. Veuillez réessayer.")
 
         # 4. Récupérer le montant actuel de la facture sélectionnée
-        old_amount = await get_invoice_current_amount(pool, selected_facture_id)
+        old_amount = await obtentionRésuméMontantActuel(pool, selected_facture_id)
         if old_amount is None:
             print(f"Impossible de récupérer le montant actuel pour la facture ID {selected_facture_id}.")
             return
@@ -227,7 +227,7 @@ async def main_modify_invoice_amount():
             f"Confirmez-vous la modification du montant de la facture {selected_facture_id} de {old_amount:.2f} à {new_amount:.2f} ? (oui/non) : ").lower().strip()
 
         if confirm == 'oui':
-            success = await update_invoice_amount_and_log_history(pool, selected_facture_id, old_amount, new_amount)
+            success = await majMontantEtHistorique(pool, selected_facture_id, old_amount, new_amount)
             if success:
                 print("Modification effectuée avec succès.")
             else:
@@ -242,4 +242,4 @@ async def main_modify_invoice_amount():
             await pool.close()
 
 if __name__ == "__main__":
-    asyncio.run(main_modify_invoice_amount())
+    asyncio.run(mainModificationMontant())

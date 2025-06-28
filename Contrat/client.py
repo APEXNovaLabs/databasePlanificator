@@ -39,11 +39,26 @@ async def create_client(pool, nom, prenom, email, telephone, adresse, nif, stat,
             await conn.commit()
             return cur.lastrowid  # Retourne l'ID du client créé
 
-async def read_client(pool, client_id):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT * FROM Client WHERE client_id = %s", (client_id,))
-            return await cur.fetchone()
+async def read_client(pool, client_id=None):
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            if client_id is None:
+                # Lire tous les clients
+                await cursor.execute("SELECT * FROM Client")
+                return await cursor.fetchall() # Retourne une liste de dictionnaires
+            else:
+                # Lire un client spécifique par ID
+                await cursor.execute("SELECT * FROM Client WHERE client_id = %s", (client_id,))
+                return await cursor.fetchone() # Retourne un seul dictionnaire ou None
+    except Exception as e:
+        print(f"Erreur lors de la lecture du client/des clients: {e}")
+        # Retourne None si la lecture d'un seul client échoue, ou une liste vide si la lecture de tous échoue
+        return None if client_id is not None else []
+    finally:
+        if conn:
+            pool.release(conn)
 
 async def update_client(pool, client_id, nom, prenom, email, telephone, adresse, nif, stat, categorie, axe):
     async with pool.acquire() as conn:

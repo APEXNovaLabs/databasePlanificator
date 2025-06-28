@@ -123,7 +123,7 @@ async def main():
                             prenom = None
                             nif = None
                             stat = None
-                            axe = input("Axe : ").strip()  # Assuming 'axe' is always needed for client
+                            axe = input("Axe : ").strip()
                             categorie_choisie = None
 
                             if categories_client:

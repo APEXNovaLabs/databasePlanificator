@@ -1,6 +1,5 @@
-# Dans Contrat/signalement.py
 import aiomysql
-from datetime import date # Si vous utilisez des objets date pour les détails de planification
+from datetime import date
 
 async def create_signalement(pool, planning_detail_id, motif, type_signalement):
     conn = None # Initialiser la connexion à None

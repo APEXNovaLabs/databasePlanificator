@@ -26,6 +26,9 @@ Database/
          ├── contrat/                   # Fonctionnalités sur le contrat (Choix sur la continuité du contrat)
          ├── infoClient                 # Option de sélection des clients et affichage des traitements assignés
          ├── remarque/                  # Fonctionnalités sur les remarques (Ajout d'une facture à chaque enregistrement de remarque)
+         ├── Excel/                     # Géneration de planning par Excel
+         ├── Facture/                   # Gestion de facture (Maintenance)
+         ├── signalement/               # Gestion des signalements
          └── triage/                    # Triage: Triage par ordre alphabetique, Recherche de contrat, Triage des traitements par catégorie, triage des traitements spécifiques à chaque client
      ├── regroupeTraitementCat/         # Scripts de regroupement des traitements par catégories (Script Python et SQL)
      ├── CRUDonClient.py                # Requête CRUD pour la table Client
@@ -40,12 +43,14 @@ Database/
      ├── testDB.sql                     # Script pour une série d'insertion de données pour tester la base de données
      ├── SuppressionDB.sql              # Script de suppression de l'entièreté de la base de données
      └── Planificator.sql               # Script principale de la base de données
+
 └──  README.md                          # Documentation
 ```
 
 ### 📝 Notice
 
-Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données
+Veuillez créer un nouveau utilisateur pour la DB si vous voulez la tester.
 
 ### 📃 Licence
-Ce projet est libre de droits et peut être utilisé pour des projets personnels.
+
+Ce projet est libre de droits et peut être utilisé pour des projets personnels. Que ce soit pour les scripts python et aussi ceux de la DB

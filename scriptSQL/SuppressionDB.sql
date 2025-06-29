@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS Historique;
 DROP TABLE IF EXISTS Planning;
 DROP TABLE IF EXISTS PlanningDetails;
 DROP TABLE IF EXISTS Signalement;
+DROP TABLE IF EXISTS Historique_prix;
 DROP TABLE IF EXISTS Remarque;
 
 

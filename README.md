@@ -28,17 +28,18 @@ Database/
          ├── remarque/                  # Fonctionnalités sur les remarques (Ajout d'une facture à chaque enregistrement de remarque)
          └── triage/                    # Triage: Triage par ordre alphabetique, Recherche de contrat, Triage des traitements par catégorie, triage des traitements spécifiques à chaque client
      ├── regroupeTraitementCat/         # Scripts de regroupement des traitements par catégories (Script Python et SQL)
-     ├── client.py                      # Requête CRUD pour la table Client
-     ├── codeObsolète.py                # Requête CRUD pour l'ancienne table Historique
-     ├── contrat.py                     # Requête CRUD pour la table Contrat
-     ├── crudDatabasePlanificator.py    # Programme principale 
-     ├── facture.py                     # Requête CRUD pour la facture Facture
-     ├── historique.py                  # Requête CRUD pour la table Historique
-     ├── planning.py                    # Requête CRUD pour la table Planning et PlanningDetails
-     ├── signalement.py                 # Requête CRUD pour la table Signalement 
-     └── traitement.py                  # Requête CRUD pour la table Traitement et typeTraitement
+     ├── CRUDonClient.py                # Requête CRUD pour la table Client
+     ├── CRUDonContrat.py               # Requête CRUD pour la table Contrat
+     ├── mainCRUDonPlanificator.py      # Programme principale 
+     ├── CRUDonFacture.py               # Requête CRUD pour la facture Facture
+     ├── CRUDonHistorique.py            # Requête CRUD pour la table Historique
+     ├── CRUDonPlanning.py              # Requête CRUD pour la table Planning et PlanningDetails
+     ├── CRUDonSignalement.py           # Requête CRUD pour la table Signalement 
+     └── CRUDonTraitement.py            # Requête CRUD pour la table Traitement et typeTraitement
 ├──  scriptSQL/                         # Script SQL pour la base de données
-     └── Planificator.sql                # Script finale de la base de données
+     ├── testDB.sql                     # Script pour une série d'insertion de données pour tester la base de données
+     ├── SuppressionDB.sql              # Script de suppression de l'entièreté de la base de données
+     └── Planificator.sql               # Script principale de la base de données
 └──  README.md                          # Documentation
 ```
 

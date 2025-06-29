@@ -2,12 +2,47 @@ import asyncio
 from datetime import datetime
 
 import aiomysql
-from Contrat.CRUDonClient import create_client, read_client, update_client, delete_client, obtenir_categories
-from Contrat.CRUDonContrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
-from Contrat.CRUDonTraitement import creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
-from Contrat.CRUDonPlanning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
-from Contrat.CRUDonFacture import create_facture, read_facture, delete_facture, update_facture
-from Contrat.CRUDonSignalement import create_signalement, read_signalement, update_signalement, delete_signalement
+from Contrat.CRUDonClient import (
+    create_client,
+    read_client,
+    update_client,
+    delete_client,
+    obtenir_categories,
+)
+from Contrat.CRUDonContrat import (
+    create_contrat,
+    read_contrat,
+    update_contrat,
+    delete_contrat,
+    obtenir_duree_contrat,
+    obtenir_axe_contrat,
+)
+from Contrat.CRUDonTraitement import (
+    creation_traitement,
+    obtenir_types_traitement,
+    read_traitement,
+    update_traitement,
+    delete_traitement,
+)
+from Contrat.CRUDonPlanning import (
+    create_planning,
+    obtenir_redondances,
+    read_planning,
+    update_planning,
+    delete_planning,
+)
+from Contrat.CRUDonFacture import (
+    create_facture,
+    read_facture,
+    delete_facture,
+    update_facture,
+)
+from Contrat.CRUDonSignalement import (
+    create_signalement,
+    read_signalement,
+    update_signalement,
+    delete_signalement,
+)
 
 async def main():
     pool = None  # Initialize pool to None

@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 
 import aiomysql
-from Contrat.client import create_client, read_client, update_client, delete_client, obtenir_categories
+from Contrat.CRUDClient import create_client, read_client, update_client, delete_client, obtenir_categories
 from Contrat.contrat import create_contrat, read_contrat, update_contrat, delete_contrat, obtenir_duree_contrat, obtenir_axe_contrat
 from Contrat.traitement import creation_traitement, obtenir_types_traitement, read_traitement, update_traitement, delete_traitement
 from Contrat.planning import create_planning, obtenir_redondances, read_planning, update_planning, delete_planning
@@ -15,7 +15,7 @@ from Contrat.signalement import create_signalement, read_signalement, update_sig
 """
 
 
-# The 'obtenir_categories' function was already imported from client.py,
+# The 'obtenir_categories' function was already imported from CRUDClient.py,
 # so the local definition here is redundant and removed to avoid confusion.
 
 async def main():

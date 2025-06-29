@@ -48,8 +48,8 @@ Database/
 
 ### 📝 Notice
 
-Certains fichiers peuvent contenir des scripts sur les anciennes versions de la base de données
+Veuillez créer un nouveau utilisateur pour la DB si vous voulez la tester.
 
 ### 📃 Licence
 
-Ce projet est libre de droits et peut être utilisé pour des projets personnels.
+Ce projet est libre de droits et peut être utilisé pour des projets personnels. Que ce soit pour les scripts python et aussi ceux de la DB

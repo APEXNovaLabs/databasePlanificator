@@ -1,4 +1,4 @@
-# Dans Contrat/contrat.py
+# Dans Contrat/CRUDonContrat.py
 import aiomysql
 import asyncio
 from datetime import datetime

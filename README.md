@@ -42,7 +42,7 @@ Database/
 ├──  scriptSQL/                         # Script SQL pour la base de données
      ├── testDB.sql                     # Script pour une série d'insertion de données pour tester la base de données
      ├── SuppressionDB.sql              # Script de suppression de l'entièreté de la base de données
-     └── Planificator.sql               # Script principale de la base de données
+     └── Planificator.sql               # Script principal de la base de données
 
 └──  README.md                          # Documentation
 ```

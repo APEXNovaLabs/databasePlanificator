@@ -44,6 +44,12 @@ from Contrat.CRUDonSignalement import (
     delete_signalement,
 )
 
+from Contrat.fonctionnalités.Facture.gestionFacture import (
+    create_facture, get_facture_details, update_facture_montant_and_status,
+    delete_facture, get_all_factures_for_client,
+    obtenir_etats_facture, obtenir_axes
+)
+
 async def main():
     pool = None  # Initialize pool to None
     try:
@@ -83,7 +89,10 @@ async def main():
         types_traitement_names = [t['typeTraitement'] for t in types_traitement_data]
         types_traitement_map = {t['typeTraitement']: t['id_type_traitement'] for t in types_traitement_data}
 
-        redondances = await obtenir_redondances(pool)  # Assuming this returns a list of strings
+        redondances = await obtenir_redondances(pool)
+
+        etats_facture = await obtenir_etats_facture(pool)
+        axes_facture = await obtenir_axes(pool)
 
         # Test Loop
         while True:

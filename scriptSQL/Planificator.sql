@@ -242,8 +242,8 @@ CREATE TABLE Facture (
 CREATE TABLE Historique_prix (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     facture_id INT NOT NULL,
-    old_amount DECIMAL(10, 2) NOT NULL,
-    new_amount DECIMAL(10, 2) NOT NULL,
+    old_amount INT NOT NULL,
+    new_amount INT NOT NULL,
     change_date DATETIME NOT NULL,
     changed_by VARCHAR(255) DEFAULT 'System',
     FOREIGN KEY (facture_id) REFERENCES Facture(facture_id) ON DELETE CASCADE

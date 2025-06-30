@@ -1,53 +1,97 @@
+# gestionFacture.py
 import aiomysql
-from datetime import date
+from datetime import date, datetime  # Ajout de datetime pour Historique_prix.change_date
 
-# Assurez-vous d'importer votre script d'exportation Excel ici
-# Par exemple, si votre script s'appelle 'export_excel.py'
-# from export_excel import generate_invoice_excel
 
-# Fonction factice pour simuler l'exportation Excel (gardée comme avant, à remplacer)
-async def generate_invoice_excel_mock(facture_details, output_path="facture.xlsx"):
-    """
-    Simule la génération d'un fichier Excel.
-    Remplacez cette fonction par l'importation et l'appel de votre fonction réelle.
-    """
-    print(f"\n--- Génération de la facture Excel ---")
-    print(f"Détails de la facture à exporter : {facture_details.get('facture_id')}")
-    print(f"Chemin de sortie : {output_path}")
-    print("Fichier Excel généré (simulation).")
-    return True
+# --- Fonctions utilitaires pour obtenir les ENUMs (à importer si elles sont dans d'autres fichiers) ---
+# Ces fonctions sont nécessaires pour les menus interactifs
+async def obtenir_etats_facture(pool):
+    """Récupère les valeurs ENUM pour la colonne 'etat' de la table Facture."""
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT COLUMN_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE() \
+                      AND TABLE_NAME = 'Facture' \
+                      AND COLUMN_NAME = 'etat' \
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchone()
+            if result and 'COLUMN_TYPE' in result and result['COLUMN_TYPE'].startswith("enum("):
+                enum_str = result['COLUMN_TYPE']
+                return [val.strip("'") for val in enum_str[len("enum("):-1].split(',')]
+            return []
+    except Exception as e:
+        print(f"Erreur lors de la récupération des états de facture : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
 
-async def create_facture(pool, client_id, date_facture, montant_total, traitements_ids):
+
+async def obtenir_axes(pool):
+    """Récupère les valeurs ENUM pour la colonne 'axe' de la table Facture."""
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT COLUMN_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE() \
+                      AND TABLE_NAME = 'Facture' \
+                      AND COLUMN_NAME = 'axe' \
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchone()
+            if result and 'COLUMN_TYPE' in result and result['COLUMN_TYPE'].startswith("enum("):
+                enum_str = result['COLUMN_TYPE']
+                return [val.strip("'") for val in enum_str[len("enum("):-1].split(',')]
+            return []
+    except Exception as e:
+        print(f"Erreur lors de la récupération des axes : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
+
+
+# --- Fonctions CRUD pour Facture ---
+
+async def create_facture(pool, planning_detail_id, montant, date_traitement, etat='Non payé', axe=None):
     """
-    Crée une nouvelle facture et l'associe à un ou plusieurs traitements.
-    Les montants initiaux (payé, restant) sont gérés ici.
+    Crée une nouvelle facture dans la base de données.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        planning_detail_id (int): L'ID du PlanningDetails associé à cette facture.
+        montant (int): Le montant initial de la facture.
+        date_traitement (date): La date du traitement (qui est la date de la facture).
+        etat (str, optional): L'état de la facture ('Payé', 'Non payé', 'À venir'). Par défaut 'Non payé'.
+        axe (str, optional): L'axe géographique de la facture.
+
+    Returns:
+        int: L'ID de la facture nouvellement créée, ou None en cas d'échec.
     """
     conn = None
     try:
         conn = await pool.acquire()
         async with conn.cursor() as cur:
-            # Insérer la facture principale
-            # Les montants sont traités comme des entiers
+            # Assurez-vous que 'axe' est fourni si NOT NULL dans la DB
+            if axe is None:
+                raise ValueError("L'axe ne peut pas être NULL pour la création d'une facture.")
+
             await cur.execute("""
-                INSERT INTO Facture (client_id, date_facture, montant_total, montant_paye, montant_restant)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (client_id, date_facture, montant_total, 0, montant_total)) # 0 au lieu de Decimal('0.00')
+                              INSERT INTO Facture (planning_detail_id, montant, date_traitement, etat, axe)
+                              VALUES (%s, %s, %s, %s, %s)
+                              """, (planning_detail_id, montant, date_traitement, etat, axe))
             await conn.commit()
             facture_id = cur.lastrowid
 
-            if not facture_id:
-                raise Exception("Erreur: Impossible de récupérer l'ID de la facture créée.")
-
-            # Associer les traitements à la facture
-            if traitements_ids:
-                for traitement_id in traitements_ids:
-                    await cur.execute(
-                        "INSERT INTO FactureTraitement (facture_id, traitement_id) VALUES (%s, %s)",
-                        (facture_id, traitement_id)
-                    )
-                await conn.commit()
-
-            print(f"Facture {facture_id} créée avec succès pour le client {client_id}.")
+            print(f"Facture {facture_id} créée avec succès pour PlanningDetail ID {planning_detail_id}.")
             return facture_id
     except Exception as e:
         print(f"Erreur lors de la création de la facture : {e}")
@@ -58,35 +102,53 @@ async def create_facture(pool, client_id, date_facture, montant_total, traitemen
         if conn:
             pool.release(conn)
 
+
 async def get_facture_details(pool, facture_id):
     """
-    Récupère les détails complets d'une facture, y compris les traitements associés.
+    Récupère les détails complets d'une facture, y compris les informations de traitement et l'historique des prix.
     """
     conn = None
     try:
         conn = await pool.acquire()
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            # Détails de la facture
-            await cur.execute("SELECT * FROM Facture WHERE facture_id = %s", (facture_id,))
+            # Détails de la facture avec jointures pour le contexte de traitement
+            await cur.execute("""
+                              SELECT f.facture_id,
+                                     f.planning_detail_id,
+                                     f.montant,             -- Montant actuel de la facture
+                                     f.date_traitement,
+                                     f.etat,
+                                     f.axe,
+                                     pd.date_planification, -- Date de planification du détail de planning
+                                     p.traitement_id,
+                                     tt.typeTraitement AS nom_type_traitement,
+                                     cl.client_id,
+                                     cl.nom            AS nom_client,
+                                     cl.prenom         AS prenom_client
+                              FROM Facture f
+                                       JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
+                                       JOIN Planning p ON pd.planning_id = p.planning_id
+                                       JOIN Traitement t ON p.traitement_id = t.traitement_id
+                                       JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
+                                       JOIN Contrat co ON t.contrat_id = co.contrat_id
+                                       JOIN Client cl ON co.client_id = cl.client_id
+                              WHERE f.facture_id = %s
+                              """, (facture_id,))
             facture_details = await cur.fetchone()
 
             if not facture_details:
                 return None
 
-            # Traitements associés à la facture
+            # Historique des prix pour cette facture
             await cur.execute("""
-                SELECT
-                    ft.traitement_id,
-                    tt.typeTraitement AS nom_type_traitement,
-                    t.contrat_id
-                FROM FactureTraitement ft
-                JOIN Traitement t ON ft.traitement_id = t.traitement_id
-                JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
-                WHERE ft.facture_id = %s
-            """, (facture_id,))
-            traitements_associes = await cur.fetchall()
+                              SELECT history_id, old_amount, new_amount, change_date, changed_by
+                              FROM Historique_prix
+                              WHERE facture_id = %s
+                              ORDER BY change_date DESC, history_id DESC
+                              """, (facture_id,))
+            historique_prix = await cur.fetchall()
 
-            facture_details['traitements_associes'] = traitements_associes
+            facture_details['historique_prix'] = historique_prix
             return facture_details
     except Exception as e:
         print(f"Erreur lors de la récupération des détails de la facture {facture_id} : {e}")
@@ -95,56 +157,63 @@ async def get_facture_details(pool, facture_id):
         if conn:
             pool.release(conn)
 
-async def update_montant_facture(pool, facture_id, nouveau_montant_total=None, montant_paye_ajoute=None):
+
+async def update_facture_montant_and_status(pool, facture_id, nouveau_montant=None, nouvel_etat=None,
+                                            changed_by='System'):
     """
-    Met à jour le montant total ou ajoute un montant au 'montant_paye' d'une facture.
-    Recalcule le montant restant en conséquence.
-    Les montants sont traités comme des entiers.
+    Met à jour le montant ou l'état d'une facture.
+    Si le montant est modifié, un enregistrement est ajouté à Historique_prix.
     """
     conn = None
     try:
         conn = await pool.acquire()
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            # 1. Récupérer l'état actuel de la facture
-            await cur.execute("SELECT montant_total, montant_paye, montant_restant FROM Facture WHERE facture_id = %s", (facture_id,))
+        async with conn.cursor(aiomysql.DictCursor) as cur:  # Utilisation de DictCursor pour lire l'ancien montant
+            # Récupérer l'état actuel de la facture
+            await cur.execute("SELECT montant, etat FROM Facture WHERE facture_id = %s", (facture_id,))
             facture_actuelle = await cur.fetchone()
 
             if not facture_actuelle:
                 print(f"Facture avec l'ID {facture_id} non trouvée.")
                 return False
 
-            current_total = facture_actuelle['montant_total']
-            current_paid = facture_actuelle['montant_paye']
+            old_montant = facture_actuelle['montant']
+            current_etat = facture_actuelle['etat']
 
-            # 2. Calculer les nouveaux montants
-            updated_total = current_total
-            updated_paid = current_paid
+            updates = []
+            params = []
 
-            if nouveau_montant_total is not None:
-                updated_total = nouveau_montant_total
-                updated_remaining = updated_total - updated_paid
-            elif montant_paye_ajoute is not None:
-                updated_paid += montant_paye_ajoute
-                updated_remaining = updated_total - updated_paid
-            else:
-                print("Aucun montant à modifier ou à ajouter spécifié.")
+            # Mise à jour du montant
+            if nouveau_montant is not None and nouveau_montant != old_montant:
+                updates.append("montant = %s")
+                params.append(nouveau_montant)
+
+                # Enregistrer l'historique du prix
+                await cur.execute("""
+                                  INSERT INTO Historique_prix (facture_id, old_amount, new_amount, change_date, changed_by)
+                                  VALUES (%s, %s, %s, %s, %s)
+                                  """, (facture_id, old_montant, nouveau_montant, datetime.now(), changed_by))
+                print(
+                    f"Historique de prix enregistré pour la facture {facture_id}: {old_montant} -> {nouveau_montant}.")
+
+            # Mise à jour de l'état
+            if nouvel_etat is not None and nouvel_etat != current_etat:
+                updates.append("etat = %s")
+                params.append(nouvel_etat)
+
+            if not updates:
+                print("Aucune modification à appliquer (montant et état sont identiques ou non spécifiés).")
                 return False
 
-            # Empêcher le montant restant d'être négatif
-            # Utiliser max(0, ...) pour les entiers
-            updated_remaining = max(0, updated_remaining)
+            # Exécuter la mise à jour
+            query_update = f"UPDATE Facture SET {', '.join(updates)} WHERE facture_id = %s"
+            params.append(facture_id)
 
-            # 3. Mettre à jour la base de données
-            await cur.execute("""
-                UPDATE Facture
-                SET montant_total = %s, montant_paye = %s, montant_restant = %s
-                WHERE facture_id = %s
-            """, (updated_total, updated_paid, updated_remaining, facture_id))
+            await cur.execute(query_update, tuple(params))
             await conn.commit()
-            print(f"Facture {facture_id} mise à jour. Total: {updated_total}, Payé: {updated_paid}, Restant: {updated_remaining}")
+            print(f"Facture {facture_id} mise à jour avec succès.")
             return True
     except Exception as e:
-        print(f"Erreur lors de la mise à jour des montants de la facture {facture_id} : {e}")
+        print(f"Erreur lors de la mise à jour de la facture {facture_id} : {e}")
         if conn:
             await conn.rollback()
         return False
@@ -152,28 +221,57 @@ async def update_montant_facture(pool, facture_id, nouveau_montant_total=None, m
         if conn:
             pool.release(conn)
 
+
+async def delete_facture(pool, facture_id):
+    """
+    Supprime une facture de la base de données.
+    Note: Cela déclenchera ON DELETE CASCADE sur Historique_prix et FactureTraitement.
+    """
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor() as cur:
+            await cur.execute("DELETE FROM Facture WHERE facture_id = %s", (facture_id,))
+            await conn.commit()
+            print(f"Facture {facture_id} supprimée avec succès.")
+            return cur.rowcount
+    except Exception as e:
+        print(f"Erreur lors de la suppression de la facture {facture_id} : {e}")
+        return 0
+    finally:
+        if conn:
+            pool.release(conn)
+
+
 async def get_all_factures_for_client(pool, client_id):
     """
-    Récupère toutes les factures émises pour un client spécifique.
+    Récupère toutes les factures émises pour un client spécifique,
+    en joignant à travers PlanningDetails, Planning, Traitement et Contrat.
     """
     conn = None
     try:
         conn = await pool.acquire()
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("""
-                SELECT
-                    f.facture_id,
-                    f.date_facture,
-                    f.montant_total,
-                    f.montant_paye,
-                    f.montant_restant,
-                    cl.nom AS nom_client,
-                    cl.prenom AS prenom_client
-                FROM Facture f
-                JOIN Client cl ON f.client_id = cl.client_id
-                WHERE f.client_id = %s
-                ORDER BY f.date_facture DESC
-            """, (client_id,))
+                              SELECT f.facture_id,
+                                     f.montant,
+                                     f.date_traitement,
+                                     f.etat,
+                                     f.axe,
+                                     cl.nom            AS nom_client,
+                                     cl.prenom         AS prenom_client,
+                                     tt.typeTraitement AS nom_type_traitement,
+                                     pd.date_planification
+                              FROM Facture f
+                                       JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
+                                       JOIN Planning p ON pd.planning_id = p.planning_id
+                                       JOIN Traitement t ON p.traitement_id = t.traitement_id
+                                       JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
+                                       JOIN Contrat co ON t.contrat_id = co.contrat_id
+                                       JOIN Client cl ON co.client_id = cl.client_id
+                              WHERE cl.client_id = %s
+                              ORDER BY f.date_traitement DESC
+                              """, (client_id,))
             return await cur.fetchall()
     except Exception as e:
         print(f"Erreur lors de la récupération des factures pour le client {client_id} : {e}")
@@ -181,3 +279,31 @@ async def get_all_factures_for_client(pool, client_id):
     finally:
         if conn:
             pool.release(conn)
+
+
+# --- Fonctions pour l'exportation Excel (à adapter avec votre script existant) ---
+
+# Fonction factice pour simuler l'exportation Excel
+# REMPLACEZ CECI par votre véritable fonction d'exportation depuis votre fichier "export_excel.py"
+# (ou le fichier où se trouve generate_facture_excel)
+async def generate_facture_excel_from_details(facture_details, output_path="facture.xlsx"):
+    """
+    Simule la génération d'un fichier Excel en utilisant les détails complets d'une facture.
+    Cette fonction doit être remplacée par l'appel à votre fonction d'exportation réelle.
+    Votre fonction réelle devra savoir comment interpréter le dictionnaire facture_details.
+    """
+    print(f"\n--- Génération de la facture Excel ---")
+    print(f"Préparation de l'export pour la facture ID: {facture_details.get('facture_id', 'N/A')}")
+    print(f"Montant: {facture_details.get('montant', 'N/A')}, État: {facture_details.get('etat', 'N/A')}")
+    print(f"Client: {facture_details.get('nom_client', '')} {facture_details.get('prenom_client', '')}")
+    if 'historique_prix' in facture_details and facture_details['historique_prix']:
+        print("Historique des prix:")
+        for hist in facture_details['historique_prix']:
+            print(f"  - Ancien: {hist['old_amount']}, Nouveau: {hist['new_amount']}, Date: {hist['change_date']}")
+
+    # Ici, vous appelleriez votre fonction réelle, par exemple (si elle est importée):
+    # from votre_module_excel import generate_facture_excel_function_name
+    # await generate_facture_excel_function_name(facture_details, output_path)
+
+    print(f"Fichier Excel généré (simulation) : {output_path}")
+    return True

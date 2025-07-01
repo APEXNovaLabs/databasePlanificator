@@ -70,9 +70,9 @@ CREATE TABLE Traitement (
 CREATE TABLE Planning (
     planning_id INT AUTO_INCREMENT PRIMARY KEY,
     traitement_id INT NOT NULL,
-    mois_debut VARCHAR(20),    -- Ex: "01", "Janvier"
-    mois_fin VARCHAR(20),      -- Ex: "12", "Décembre" (NULL si indéterminé)
-    mois_pause TEXT,           -- Ex: "07,08" pour Juillet, Août
+    mois_debut VARCHAR(20),
+    mois_fin VARCHAR(20),
+    mois_pause TEXT,
     redondance ENUM('Journalier', 'Hebdomadaire', 'Mensuel', 'Trimestriel', 'Annuel') NOT NULL,
     FOREIGN KEY (traitement_id) REFERENCES Traitement(traitement_id)
 );

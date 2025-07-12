@@ -21,11 +21,12 @@ async def obtenirDataFactureClient(pool, client_id: int, year: int, month: int):
                            cl.adresse              AS client_adresse,
                            cl.telephone            AS client_telephone,
                            cl.categorie            AS client_categorie,
+                           cl.axe                  AS client_axe, /* Ajout de l'axe du client */
                            f.date_traitement       AS `Date de traitement`,
                            tt.typeTraitement       AS `Traitement (Type)`,
                            pd.statut               AS `Etat traitement`,
                            f.etat                  AS `Etat paiement (Payée ou non)`,
-                           f.mode                  AS `Mode de Paiement`, /* Added Mode de Paiement */
+                           f.mode                  AS `Mode de Paiement`,
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -70,6 +71,7 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                            cl.adresse              AS client_adresse,
                            cl.telephone            AS client_telephone,
                            cl.categorie            AS client_categorie,
+                           cl.axe                  AS client_axe, /* Ajout de l'axe du client */
                            co.contrat_id,
                            co.date_contrat,
                            co.date_debut           AS contrat_date_debut,
@@ -82,7 +84,7 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                            p.redondance            AS `Redondance (Mois)`,
                            f.date_traitement       AS `Date de Facturation`,
                            f.etat                  AS `Etat de Paiement`,
-                           f.mode                  AS `Mode de Paiement`, /* Added Mode de Paiement */
+                           f.mode                  AS `Mode de Paiement`,
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -113,7 +115,7 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                 query += " AND f.date_traitement <= %s"
                 params.append(end_date)
 
-            query += " ORDER BY `Date de Planification` ASC, `Date de Facturation` ASC;"  # Simplified order by
+            query += " ORDER BY `Date de Planification` ASC, `Date de Facturation` ASC;"
 
             await cursor.execute(query, tuple(params))
             result = await cursor.fetchall()
@@ -282,11 +284,15 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
         ws.cell(row=ligneActuelle, column=2, value=infoClient['client_categorie'])
         ligneActuelle += 1
 
+        ws.cell(row=ligneActuelle, column=1, value="Axe Client :").font = bold_font  # Ajout de l'axe
+        ws.cell(row=ligneActuelle, column=2, value=infoClient['client_axe'])
+        ligneActuelle += 1
+
     ligneActuelle += 1  # Ligne vide
 
     # Tableau des traitements
-    table_headers = ['Date de traitement', 'Traitement (Type)', 'Etat traitement', 'Etat paiement (Payée ou non)',
-                     'Mode de Paiement', 'Montant']  # Updated headers
+    table_headers = ['Date de Planification', 'Date de Facturation', 'Traitement concerné', 'Redondance (Mois)',
+                     'Etat du Planning', 'Mode de Paiement', 'Etat de Paiement', 'Montant']  # Updated headers
     num_table_cols = len(table_headers)
 
     # Ligne "Facture du mois de:"
@@ -309,14 +315,20 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
         ligneActuelle += 1
     else:
         df_invoice_data = pd.DataFrame(data)
-        # Updated column selection and order
-        df_display = df_invoice_data[
-            ['Date de traitement', 'Traitement (Type)', 'Etat traitement', 'Etat paiement (Payée ou non)',
-             'Mode de Paiement', 'montant_facture']]
-        df_display.rename(columns={'montant_facture': 'Montant'}, inplace=True)
+        # Updated column selection and order for monthly report
+        df_display = df_invoice_data.reindex(columns=[
+            'Date de Planification', 'Date de Facturation', 'Traitement (Type)', 'Redondance (Mois)',
+            'Etat traitement', 'Mode de Paiement', 'Etat paiement (Payée ou non)', 'montant_facture'
+        ])
+        df_display.rename(columns={
+            'Traitement (Type)': 'Traitement concerné',
+            'Etat traitement': 'Etat du Planning',
+            'Etat paiement (Payée ou non)': 'Etat de Paiement',
+            'montant_facture': 'Montant'
+        }, inplace=True)
 
         for r_idx, row_data in enumerate(df_display.values.tolist(), start=ligneActuelle):
-            payment_status = row_data[3]  # 'Etat paiement (Payée ou non)' is now index 3
+            payment_status = row_data[6]  # 'Etat de Paiement' is now index 6
             fill_to_apply = None
             if payment_status == 'Payé':
                 fill_to_apply = green_fill
@@ -436,6 +448,10 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         ws.cell(row=current_row, column=2, value=client_info['client_categorie'])
         current_row += 1
 
+        ws.cell(row=current_row, column=1, value="Axe Client :").font = bold_font  # Ajout de l'axe
+        ws.cell(row=current_row, column=2, value=client_info['client_axe'])
+        current_row += 1
+
     current_row += 1
 
     # Ligne de titre du rapport
@@ -443,7 +459,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
             value=f"Rapport de Facturation pour la période : {report_period}").font = header_font
     # Updated headers for comprehensive report
     table_headers = [
-        'Date de Planification', 'Date de Facturation', 'Type de Traitement', 'Redondance (Mois)',
+        'Date de Planification', 'Date de Facturation', 'Traitement concerné', 'Redondance (Mois)',
         'Etat du Planning', 'Mode de Paiement', 'Etat de Paiement', 'Montant Facturé'
     ]
     max_cols_for_merge = len(table_headers)

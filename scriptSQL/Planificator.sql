@@ -232,6 +232,7 @@ CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          planning_detail_id INT NOT NULL,
                          montant INT NOT NULL,
+                         mode ENUM('Chèque', 'Espèce'),
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé', 'À venir') DEFAULT 'Non payé',
                          axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL,

@@ -25,6 +25,7 @@ async def obtenirDataFactureClient(pool, client_id: int, year: int, month: int):
                            tt.typeTraitement       AS `Traitement (Type)`,
                            pd.statut               AS `Etat traitement`,
                            f.etat                  AS `Etat paiement (Payée ou non)`,
+                           f.mode                  AS `Mode de Paiement`, /* Added Mode de Paiement */
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -81,6 +82,7 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                            p.redondance            AS `Redondance (Mois)`,
                            f.date_traitement       AS `Date de Facturation`,
                            f.etat                  AS `Etat de Paiement`,
+                           f.mode                  AS `Mode de Paiement`, /* Added Mode de Paiement */
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -111,7 +113,7 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                 query += " AND f.date_traitement <= %s"
                 params.append(end_date)
 
-            query += " ORDER BY co.date_contrat ASC, `Date de Planification` ASC, `Date de Facturation` ASC;"
+            query += " ORDER BY `Date de Planification` ASC, `Date de Facturation` ASC;"  # Simplified order by
 
             await cursor.execute(query, tuple(params))
             result = await cursor.fetchall()
@@ -284,14 +286,14 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
 
     # Tableau des traitements
     table_headers = ['Date de traitement', 'Traitement (Type)', 'Etat traitement', 'Etat paiement (Payée ou non)',
-                     'Montant']
+                     'Mode de Paiement', 'Montant']  # Updated headers
     num_table_cols = len(table_headers)
 
     # Ligne "Facture du mois de:"
     ws.cell(row=ligneActuelle, column=1, value=f"Facture du mois de : {month_name_fr} {year}").font = header_font
     ws.merge_cells(start_row=ligneActuelle, start_column=1, end_row=ligneActuelle, end_column=num_table_cols)
     ws.cell(row=ligneActuelle, column=1).alignment = Alignment(horizontal='center')
-    ligneActuelle += 2  # Deux lignes vides après pour la séparation avec le tableau
+    ligneActuelle += 2
 
     # Écrire les en-têtes du tableau
     for col_idx, header in enumerate(table_headers, 1):
@@ -307,13 +309,14 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
         ligneActuelle += 1
     else:
         df_invoice_data = pd.DataFrame(data)
+        # Updated column selection and order
         df_display = df_invoice_data[
             ['Date de traitement', 'Traitement (Type)', 'Etat traitement', 'Etat paiement (Payée ou non)',
-             'montant_facture']]
+             'Mode de Paiement', 'montant_facture']]
         df_display.rename(columns={'montant_facture': 'Montant'}, inplace=True)
 
         for r_idx, row_data in enumerate(df_display.values.tolist(), start=ligneActuelle):
-            payment_status = row_data[3]
+            payment_status = row_data[3]  # 'Etat paiement (Payée ou non)' is now index 3
             fill_to_apply = None
             if payment_status == 'Payé':
                 fill_to_apply = green_fill
@@ -327,7 +330,7 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
                     cell.fill = fill_to_apply
             ligneActuelle += 1
 
-    ligneActuelle += 1  # Ligne vide avant les totaux
+    ligneActuelle += 1
 
     # Calcul et affichage des totaux
     if data:
@@ -348,6 +351,16 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
                     value="Aucun montant payé pour les types de traitement ce mois.").font = bold_font
             ligneActuelle += 1
 
+        ligneActuelle += 1
+
+        # Total de paiement par mode de paiement
+        ws.cell(row=ligneActuelle, column=1, value="Total de paiement par mode de paiement :").font = bold_font
+        ligneActuelle += 1
+        payment_mode_counts = df_calc.groupby('Mode de Paiement').size().reset_index(name='Nombre de Paiements')
+        for _, row in payment_mode_counts.iterrows():
+            ws.cell(row=ligneActuelle, column=2, value=f"{row['Mode de Paiement']} :").font = bold_font
+            ws.cell(row=ligneActuelle, column=3, value=row['Nombre de Paiements']).font = bold_font
+            ligneActuelle += 1
         ligneActuelle += 1
 
         grand_total = df_calc['montant_facture'].sum()
@@ -428,10 +441,10 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
     # Ligne de titre du rapport
     ws.cell(row=current_row, column=1,
             value=f"Rapport de Facturation pour la période : {report_period}").font = header_font
+    # Updated headers for comprehensive report
     table_headers = [
-        'ID Contrat', 'Date Contrat', 'Début Contrat', 'Fin Contrat', 'Statut Contrat', 'Durée Contrat',
-        'Type de Traitement', 'Redondance (Mois)', 'Date de Planification', 'Etat du Planning',
-        'Date de Facturation', 'Etat de Paiement', 'Montant Facturé'
+        'Date de Planification', 'Date de Facturation', 'Type de Traitement', 'Redondance (Mois)',
+        'Etat du Planning', 'Mode de Paiement', 'Etat de Paiement', 'Montant Facturé'
     ]
     max_cols_for_merge = len(table_headers)
     ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_cols_for_merge)
@@ -453,10 +466,11 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         current_row += 1
     else:
         df_invoice_data = pd.DataFrame(data)
+        # Reindex columns based on the new table_headers order
         df_display = df_invoice_data.reindex(columns=table_headers)
 
         for r_idx, row_data in enumerate(df_display.values.tolist(), start=current_row):
-            payment_status = row_data[11]
+            payment_status = row_data[6]  # 'Etat de Paiement' is now at index 6
             fill_to_apply = None
             if payment_status == 'Payé':
                 fill_to_apply = green_fill
@@ -493,6 +507,16 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         ws.cell(row=current_row, column=len(table_headers)).fill = red_fill
         current_row += 1
 
+        current_row += 1
+
+        # Total de paiement par mode de paiement
+        ws.cell(row=current_row, column=1, value="Total de paiement par mode de paiement :").font = bold_font
+        current_row += 1
+        payment_mode_counts = df_calc.groupby('Mode de Paiement').size().reset_index(name='Nombre de Paiements')
+        for _, row in payment_mode_counts.iterrows():
+            ws.cell(row=current_row, column=2, value=f"{row['Mode de Paiement']} :").font = bold_font
+            ws.cell(row=current_row, column=3, value=row['Nombre de Paiements']).font = bold_font
+            current_row += 1
         current_row += 1
 
         ws.cell(row=current_row, column=1, value="Synthèse par Type de Traitement :").font = bold_font
@@ -739,7 +763,6 @@ async def main_invoice_report_menu():
                     break
                 else:
                     print("Aucune donnée de facture trouvée pour ce client pour générer un rapport complet.")
-                    # Continuer la boucle pour que l'utilisateur puisse choisir une autre option
                     continue
             else:
                 print("Choix invalide. Veuillez entrer '1', '2' ou '3'.")

@@ -1,3 +1,7 @@
+/*
+* Données génerées par Gemini
+* A noter qu'ils peuvent présenter quelques incohérences
+*/
 USE Planificator;
 
 -- Insertion des clients (5 clients: 2 Particuliers, 2 Organisations, 1 Société)
@@ -427,7 +431,6 @@ INSERT INTO PlanningDetails (planning_id, date_planification, statut) VALUES
 
 
 -- Insertion des factures (pour les traitements de 2023 à 2025)
--- Je vais insérer des factures pour tous les planning_details qui sont 'Effectué' et dont la date de planification est <= 2025-12-31.
 INSERT INTO Facture (planning_detail_id, montant, mode, date_traitement, etat, axe)
 SELECT
     pd.planning_detail_id,
@@ -445,7 +448,6 @@ WHERE pd.statut = 'Effectué' AND pd.date_planification <= '2025-12-31';
 
 
 -- Insertion des remarques et signalements
--- Je vais insérer une remarque pour chaque planning_detail 'Effectué'
 INSERT INTO Remarque (client_id, planning_detail_id, facture_id, contenu, issue, action, date_remarque)
 SELECT
     cl.client_id,
@@ -482,8 +484,6 @@ INSERT INTO Signalement (planning_detail_id, motif, type) VALUES
 
 
 -- Insertion de l'historique
--- Je vais insérer un historique pour chaque planning_detail 'Effectué'.
--- S'il y a un signalement pour ce planning_detail, je le lierai.
 INSERT INTO Historique (facture_id, planning_detail_id, signalement_id, date_historique, contenu, issue, action)
 SELECT
     f.facture_id,

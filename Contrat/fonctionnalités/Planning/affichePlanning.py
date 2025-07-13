@@ -1,5 +1,6 @@
 import aiomysql
 import asyncio
+import datetime # Assurez-vous que datetime est importé si ce n'est pas déjà fait
 
 async def obtenirInfoBD():
     """Demande à l'utilisateur les identifiants de connexion à la base de données."""
@@ -23,12 +24,13 @@ async def obtenirInfoBD():
     return host, port, user, password, database
 
 async def afficher_planning_traitement(pool, client_id: int, traitement_id: int):
-    """Affiche les détails de planification d'un traitement pour un client."""
+    """Affiche les détails de planification d'un traitement pour un client,
+    incluant le type de traitement, la redondance et le montant de la facture."""
     try:
         # Acquérir une connexion du pool. Le 'async with' assure qu'elle est relâchée.
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur: # Utilisation de DictCursor pour des résultats plus lisibles
-                # Récupérer les informations du traitement
+                # Récupérer les informations du traitement (catégorie, type, redondance)
                 await cur.execute("""
                     SELECT tt.categorieTraitement, tt.typeTraitement, p.redondance
                     FROM Traitement t
@@ -47,13 +49,14 @@ async def afficher_planning_traitement(pool, client_id: int, traitement_id: int)
                 type_traitement = traitement_info['typeTraitement']
                 redondance = traitement_info['redondance']
 
-                # Récupérer les détails de planification
+                # Récupérer les détails de planification et le montant de la facture associée
                 await cur.execute("""
-                    SELECT pd.date_planification, pd.statut
+                    SELECT pd.date_planification, pd.statut, f.montant
                     FROM PlanningDetails pd
                     JOIN Planning p ON pd.planning_id = p.planning_id
                     JOIN Traitement t ON p.traitement_id = t.traitement_id
                     JOIN Contrat c ON t.contrat_id = c.contrat_id
+                    LEFT JOIN Facture f ON pd.planning_detail_id = f.planning_detail_id -- LEFT JOIN pour inclure les traitements sans facture (ex: 'À venir')
                     WHERE c.client_id = %s AND t.traitement_id = %s
                     ORDER BY pd.date_planification ASC
                 """, (client_id, traitement_id))
@@ -72,13 +75,15 @@ async def afficher_planning_traitement(pool, client_id: int, traitement_id: int)
                 print(f"Traitement ID : {traitement_id}")
                 print(f"Catégorie du traitement: {categorie_traitement}")
                 print(f"Type de traitement: {type_traitement}")
-                print(f"Redondance: {redondance}")
+                print(f"Redondance: {redondance} (1=mensuel, 2=bimensuel, 3=trimestriel, 4=quadrimestriel, 6=semestriel, 12=annuel)") # Ajout de la signification de la redondance
                 print(f"**Traitements effectués :** {traitements_effectues}")
                 print("\n**Détails de la planification :**")
                 for detail in planning_details:
                     # Formatage de la date pour un affichage plus propre
                     date_formatted = detail['date_planification'].strftime('%Y-%m-%d')
-                    print(f"  Date: {date_formatted}, Statut: {detail['statut']}")
+                    # Afficher le montant si disponible, sinon indiquer "N/A"
+                    montant_str = f", Montant: {detail['montant']} Ar" if detail['montant'] is not None else ", Montant: N/A"
+                    print(f"  Date: {date_formatted}, Statut: {detail['statut']}{montant_str}")
                 print("="*40 + "\n")
 
     except Exception as e:

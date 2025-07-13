@@ -162,121 +162,132 @@ async def main_traitements_report():
             print("Échec de la connexion à la base de données. Annulation de l'opération.")
             return
 
-        all_existing_months_data = await get_all_existing_treatment_months(pool)
+        while True: # Boucle pour permettre la génération de plusieurs fichiers
+            all_existing_months_data = await get_all_existing_treatment_months(pool)
 
-        selected_year = None
-        selected_month = None
+            selected_year = None
+            selected_month = None
 
-        if all_existing_months_data:
-            # 1. Obtenir les années distinctes
-            distinct_years = sorted(list(set(entry['annee'] for entry in all_existing_months_data)), reverse=True)
+            if all_existing_months_data:
+                # 1. Obtenir les années distinctes
+                distinct_years = sorted(list(set(entry['annee'] for entry in all_existing_months_data)), reverse=True)
 
-            print("\nAnnées contenant des traitements déjà enregistrés :")
-            for i, year in enumerate(distinct_years):
-                print(f"  {i + 1}. {year}")
-            print("  0. Entrer une autre année manuellement")
+                print("\nAnnées contenant des traitements déjà enregistrés :")
+                for i, year in enumerate(distinct_years):
+                    print(f"  {i + 1}. {year}")
+                print("  0. Entrer une autre année manuellement")
 
-            chosen_year_index = -1
-            while True:
-                try:
-                    choice = int(input("Choisissez un numéro d'année dans la liste ou '0' pour entrer manuellement : "))
-                    if 0 < choice <= len(distinct_years):
-                        selected_year = distinct_years[choice - 1]
-                        chosen_year_index = choice - 1
-                        break
-                    elif choice == 0:
+                chosen_year_index = -1
+                while True:
+                    try:
+                        choice = int(input("Choisissez un numéro d'année dans la liste ou '0' pour entrer manuellement : "))
+                        if 0 < choice <= len(distinct_years):
+                            selected_year = distinct_years[choice - 1]
+                            chosen_year_index = choice - 1
+                            break
+                        elif choice == 0:
+                            while True:
+                                try:
+                                    year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                                    selected_year = int(year_input)
+                                    if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                                        print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                                        continue
+                                    break
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un nombre pour l'année.")
+                            break
+                        else:
+                            print("Choix invalide. Veuillez réessayer.")
+                    except ValueError:
+                        print("Entrée invalide. Veuillez entrer un numéro.")
+
+                # 2. Après avoir choisi l'année, filtrer et afficher les mois disponibles pour cette année
+                if selected_year:
+                    months_for_selected_year = sorted(list(set(entry['mois'] for entry in all_existing_months_data if entry['annee'] == selected_year)), reverse=True)
+
+                    if months_for_selected_year:
+                        print(f"\nMois disponibles pour l'année {selected_year} :")
+                        for i, month_num in enumerate(months_for_selected_year):
+                            month_name = datetime.date(selected_year, month_num, 1).strftime('%B').capitalize()
+                            print(f"  {i + 1}. {month_name} ({month_num})")
+                        print("  0. Entrer un autre mois manuellement")
+
                         while True:
                             try:
-                                year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
-                                selected_year = int(year_input)
-                                if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
-                                    print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                                choice = int(input(f"Choisissez un numéro de mois pour {selected_year} ou '0' pour entrer manuellement : "))
+                                if 0 < choice <= len(months_for_selected_year):
+                                    selected_month = months_for_selected_year[choice - 1]
+                                    break
+                                elif choice == 0:
+                                    while True:
+                                        try:
+                                            month_input = input("Veuillez entrer le numéro du mois (1-12) : ")
+                                            selected_month = int(month_input)
+                                            if not (1 <= selected_month <= 12):
+                                                print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                                                continue
+                                            break
+                                        except ValueError:
+                                            print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
+                                    break
+                                else:
+                                    print("Choix invalide. Veuillez réessayer.")
+                            except ValueError:
+                                print("Entrée invalide. Veuillez entrer un numéro.")
+                    else: # No months found for the selected year (e.g., if user chose a future year manually)
+                        print(f"\nAucun traitement trouvé pour l'année {selected_year}. Veuillez entrer le mois manuellement.")
+                        while True:
+                            try:
+                                month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
+                                selected_month = int(month_input)
+                                if not (1 <= selected_month <= 12):
+                                    print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
                                     continue
                                 break
                             except ValueError:
-                                print("Entrée invalide. Veuillez entrer un nombre pour l'année.")
+                                print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
+
+            else: # No data at all in the database
+                print("\nAucun traitement trouvé dans la base de données. Veuillez entrer le mois et l'année manuellement.")
+                while True:
+                    try:
+                        year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                        month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
+
+                        selected_year = int(year_input)
+                        selected_month = int(month_input)
+
+                        if not (1 <= selected_month <= 12):
+                            print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                            continue
+                        if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                            print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                            continue
                         break
-                    else:
-                        print("Choix invalide. Veuillez réessayer.")
-                except ValueError:
-                    print("Entrée invalide. Veuillez entrer un numéro.")
+                    except ValueError:
+                        print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
 
-            # 2. Après avoir choisi l'année, filtrer et afficher les mois disponibles pour cette année
-            if selected_year:
-                months_for_selected_year = sorted(list(set(entry['mois'] for entry in all_existing_months_data if entry['annee'] == selected_year)), reverse=True)
+            # Final check if selected_year and selected_month are set
+            if selected_year is None or selected_month is None:
+                print("Sélection de l'année ou du mois annulée. Fin du rapport.")
+                break # Sortir de la boucle si l'utilisateur annule
 
-                if months_for_selected_year:
-                    print(f"\nMois disponibles pour l'année {selected_year} :")
-                    for i, month_num in enumerate(months_for_selected_year):
-                        month_name = datetime.date(selected_year, month_num, 1).strftime('%B').capitalize()
-                        print(f"  {i + 1}. {month_name} ({month_num})")
-                    print("  0. Entrer un autre mois manuellement")
+            print(
+                f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
+            traitements_data = await get_traitements_for_month(pool, selected_year, selected_month)
+            generate_traitements_excel(traitements_data, selected_year, selected_month)
 
-                    while True:
-                        try:
-                            choice = int(input(f"Choisissez un numéro de mois pour {selected_year} ou '0' pour entrer manuellement : "))
-                            if 0 < choice <= len(months_for_selected_year):
-                                selected_month = months_for_selected_year[choice - 1]
-                                break
-                            elif choice == 0:
-                                while True:
-                                    try:
-                                        month_input = input("Veuillez entrer le numéro du mois (1-12) : ")
-                                        selected_month = int(month_input)
-                                        if not (1 <= selected_month <= 12):
-                                            print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
-                                            continue
-                                        break
-                                    except ValueError:
-                                        print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
-                                break
-                            else:
-                                print("Choix invalide. Veuillez réessayer.")
-                        except ValueError:
-                            print("Entrée invalide. Veuillez entrer un numéro.")
-                else: # No months found for the selected year (e.g., if user chose a future year manually)
-                    print(f"\nAucun traitement trouvé pour l'année {selected_year}. Veuillez entrer le mois manuellement.")
-                    while True:
-                        try:
-                            month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
-                            selected_month = int(month_input)
-                            if not (1 <= selected_month <= 12):
-                                print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
-                                continue
-                            break
-                        except ValueError:
-                            print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
-
-        else: # No data at all in the database
-            print("\nAucun traitement trouvé dans la base de données. Veuillez entrer le mois et l'année manuellement.")
+            # Demander à l'utilisateur s'il veut générer un autre fichier
             while True:
-                try:
-                    year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
-                    month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
-
-                    selected_year = int(year_input)
-                    selected_month = int(month_input)
-
-                    if not (1 <= selected_month <= 12):
-                        print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
-                        continue
-                    if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
-                        print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
-                        continue
-                    break
-                except ValueError:
-                    print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
-
-        # Final check if selected_year and selected_month are set
-        if selected_year is None or selected_month is None:
-            print("Sélection de l'année ou du mois annulée. Fin du rapport.")
-            return
-
-
-        print(
-            f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
-        traitements_data = await get_traitements_for_month(pool, selected_year, selected_month)
-        generate_traitements_excel(traitements_data, selected_year, selected_month)
+                reponse = input("\nVoulez-vous générer un autre rapport ? (oui/non) : ").lower().strip()
+                if reponse in ['oui', 'o']:
+                    break # Continuer la boucle
+                elif reponse in ['non', 'n']:
+                    print("Fin de la génération des rapports.")
+                    return # Sortir de la fonction main_traitements_report
+                else:
+                    print("Réponse invalide. Veuillez répondre par 'oui' ou 'non'.")
 
     except Exception as e:
         print(f"Une erreur inattendue est survenue dans le script principal : {e}")

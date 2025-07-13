@@ -26,6 +26,7 @@ async def get_db_credentials():
 async def mettre_a_jour_planning_detail(pool, planning_detail_id: int, statut: str):
     """
     Met à jour le statut de PlanningDetails et enregistre l'historique si le statut est "Effectué".
+    Affiche également les détails du planning avant la mise à jour.
 
     Args:
         pool: Le pool de connexions aiomysql.
@@ -35,25 +36,47 @@ async def mettre_a_jour_planning_detail(pool, planning_detail_id: int, statut: s
     try:
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                # 1. Vérifier si le planning_detail_id existe
-                await cur.execute("SELECT planning_id FROM PlanningDetails WHERE planning_detail_id = %s", (planning_detail_id,))
-                detail_exists = await cur.fetchone()
-                if not detail_exists:
+                # 1. Récupérer et afficher les informations détaillées du planning_detail
+                # Inclut le type de traitement, la redondance et le montant de la facture.
+                await cur.execute("""
+                    SELECT pd.planning_detail_id,
+                           pd.planning_id,
+                           pd.date_planification,
+                           pd.statut,
+                           tt.typeTraitement AS type_traitement,
+                           p.redondance,
+                           f.montant AS montant_facture,
+                           f.facture_id,
+                           f.etat AS etat_facture,
+                           c.client_id,
+                           CONCAT(cl.nom, ' ', cl.prenom) AS client_nom
+                    FROM PlanningDetails pd
+                    JOIN Planning p ON pd.planning_id = p.planning_id
+                    JOIN Traitement t ON p.traitement_id = t.traitement_id
+                    JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
+                    JOIN Contrat c ON t.contrat_id = c.contrat_id
+                    JOIN Client cl ON c.client_id = cl.client_id
+                    LEFT JOIN Facture f ON pd.planning_detail_id = f.planning_detail_id
+                    WHERE pd.planning_detail_id = %s
+                """, (planning_detail_id,))
+                detail_info = await cur.fetchone()
+
+                if not detail_info:
                     print(f"**Erreur:** Le détail de planification avec l'ID {planning_detail_id} n'existe pas. Aucune mise à jour effectuée.")
                     return
 
-                # 2. Récupérer l'état de la facture associée (si elle existe)
-                etat_facture = "Non disponible" # Valeur par défaut
-                try:
-                    await cur.execute("SELECT etat FROM Facture WHERE planning_detail_id = %s", (planning_detail_id,))
-                    resultat_facture = await cur.fetchone()
-                    if resultat_facture and 'etat' in resultat_facture:
-                        etat_facture = resultat_facture['etat']
-                except Exception as e:
-                    print(f"**Avertissement:** Erreur lors de la récupération de l'état de la facture pour planning_detail_id {planning_detail_id}: {e}. L'historique utilisera 'Non disponible'.")
+                print("\n--- Informations actuelles du détail de planification ---")
+                print(f"ID Détail Planning: {detail_info['planning_detail_id']}")
+                print(f"Client: {detail_info['client_nom']} (ID: {detail_info['client_id']})")
+                print(f"Date de planification: {detail_info['date_planification'].strftime('%Y-%m-%d')}")
+                print(f"Statut actuel: {detail_info['statut']}")
+                print(f"Type de traitement: {detail_info['type_traitement']}")
+                print(f"Redondance: {detail_info['redondance']} (1=mensuel, 2=bimensuel, 3=trimestriel, 4=quadrimestriel, 6=semestriel, 12=annuel)")
+                print(f"Montant Facture: {detail_info['montant_facture']} Ar" if detail_info['montant_facture'] is not None else "Montant Facture: N/A")
+                print(f"État Facture: {detail_info['etat_facture']}" if detail_info['etat_facture'] is not None else "État Facture: N/A")
+                print("-----------------------------------------------------")
 
-
-                # 3. Mettre à jour le statut de PlanningDetails
+                # 2. Mettre à jour le statut de PlanningDetails
                 await cur.execute("UPDATE PlanningDetails SET statut = %s WHERE planning_detail_id = %s", (statut, planning_detail_id))
                 rows_affected = cur.rowcount
 
@@ -62,18 +85,21 @@ async def mettre_a_jour_planning_detail(pool, planning_detail_id: int, statut: s
                 else:
                     print(f"Statut du détail de planification {planning_detail_id} mis à jour en '{statut}'.")
 
-                # 4. Enregistrer l'historique si le statut est "Effectué"
+                # 3. Enregistrer l'historique si le statut est "Effectué"
                 if statut == "Effectué":
-                    contenu_historique = f"Traitement effectué. État de la facture : {etat_facture}."
-                    await cur.execute("""
-                        INSERT INTO Historique (planning_detail_id, contenu, date_creation)
-                        VALUES (%s, %s, %s)
-                    """, (planning_detail_id, contenu_historique, datetime.now()))
-                    print(f"Historique enregistré pour planning_detail_id {planning_detail_id}.")
+                    # Récupérer facture_id et définir des valeurs par défaut pour issue et action
+                    facture_id_for_history = detail_info['facture_id']
+                    issue_for_history = "Aucun problème signalé." # Valeur par défaut pour la colonne NOT NULL
+                    action_for_history = "Traitement standard effectué." # Valeur par défaut pour la colonne NOT NULL
 
-                # conn.commit() est optionnel ici si autocommit=True est défini sur le pool.
-                # Mais il n'y a pas de mal à le laisser pour la clarté ou si autocommit=False.
-                # await conn.commit()
+                    contenu_historique = f"Traitement effectué. Ancien statut: {detail_info['statut']}, Nouveau statut: {statut}. État de la facture: {detail_info['etat_facture'] if detail_info['etat_facture'] is not None else 'N/A'}."
+
+                    # Assurez-vous que les colonnes 'issue' et 'action' sont fournies car elles sont NOT NULL
+                    await cur.execute("""
+                        INSERT INTO Historique (facture_id, planning_detail_id, signalement_id, date_historique, contenu, issue, action)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (facture_id_for_history, planning_detail_id, None, datetime.now(), contenu_historique, issue_for_history, action_for_history))
+                    print(f"Historique enregistré pour planning_detail_id {planning_detail_id}.")
 
     except Exception as e:
         print(f"**Erreur lors de la mise à jour du planning_detail {planning_detail_id}:** {e}")

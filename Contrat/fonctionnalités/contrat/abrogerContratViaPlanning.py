@@ -7,7 +7,8 @@ from Contrat.fonctionnalités.connexionDB import DBConnection
 async def get_planning_detail_info(pool, planning_detail_id: int):
     """
     Récupère les informations détaillées d'un planning_detail spécifique,
-    incluant les IDs du planning, traitement et contrat associés.
+    incluant les IDs du planning, traitement et contrat associés,
+    ainsi que le type de traitement et le nom du client.
     Prend le pool de connexions en argument.
     """
     conn = None
@@ -15,18 +16,21 @@ async def get_planning_detail_info(pool, planning_detail_id: int):
         conn = await pool.acquire()  # Obtenir une connexion du pool
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
-                    SELECT pd.planning_detail_id, \
-                           pd.planning_id, \
-                           pd.date_planification, \
-                           pd.statut, \
-                           p.traitement_id, \
-                           t.contrat_id
-                    FROM PlanningDetails pd \
-                             JOIN \
-                         Planning p ON pd.planning_id = p.planning_id \
-                             JOIN \
-                         Traitement t ON p.traitement_id = t.traitement_id
-                    WHERE pd.planning_detail_id = %s; \
+                    SELECT pd.planning_detail_id,
+                           pd.planning_id,
+                           pd.date_planification,
+                           pd.statut, -- Valeurs possibles selon le schéma: 'Effectué', 'À venir'
+                           p.traitement_id,
+                           t.contrat_id,
+                           tt.typeTraitement, -- Ajout du type de traitement
+                           c.nom AS client_nom -- Ajout du nom du client
+                    FROM PlanningDetails pd
+                    JOIN Planning p ON pd.planning_id = p.planning_id
+                    JOIN Traitement t ON p.traitement_id = t.traitement_id
+                    JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement -- Jointure pour TypeTraitement
+                    JOIN Contrat co ON t.contrat_id = co.contrat_id -- Jointure pour Contrat
+                    JOIN Client c ON co.client_id = c.client_id -- Jointure pour Client
+                    WHERE pd.planning_detail_id = %s;
                     """
             await cursor.execute(query, (planning_detail_id,))
             result = await cursor.fetchone()
@@ -42,6 +46,8 @@ async def get_planning_detail_info(pool, planning_detail_id: int):
 async def mark_treatment_as_performed(pool, planning_detail_id: int):
     """
     Marque un traitement (planning_detail) comme 'Effectué'.
+    Le statut 'Effectué' est une valeur valide pour l'ENUM 'statut'
+    de la table PlanningDetails.
     Prend le pool de connexions en argument.
     """
     conn = None
@@ -51,14 +57,19 @@ async def mark_treatment_as_performed(pool, planning_detail_id: int):
             query = """
                     UPDATE PlanningDetails
                     SET statut = 'Effectué'
-                    WHERE planning_detail_id = %s; \
+                    WHERE planning_detail_id = %s;
                     """
             await cursor.execute(query, (planning_detail_id,))
+            # Commit la transaction pour que les changements soient persistants
+            await conn.commit()
             print(
                 f"Le traitement (planning_detail_id: {planning_detail_id}) a été marqué comme 'Effectué' avec succès.")
             return True
     except Exception as e:
         print(f"Erreur lors de la mise à jour du statut du traitement {planning_detail_id}: {e}")
+        # Rollback en cas d'erreur
+        if conn:
+            await conn.rollback()
         return False
     finally:
         if conn:
@@ -87,10 +98,10 @@ async def abrogate_contract(pool, planning_detail_id: int, resignation_date: dat
         async with conn.cursor() as cursor:
             # 2. Supprimer les traitements (PlanningDetails) futurs pour ce planning
             delete_query = """
-                           DELETE \
+                           DELETE
                            FROM PlanningDetails
-                           WHERE planning_id = %s \
-                             AND date_planification > %s; \
+                           WHERE planning_id = %s
+                             AND date_planification > %s;
                            """
             await cursor.execute(delete_query, (current_planning_id, resignation_date))
             deleted_count = cursor.rowcount
@@ -100,19 +111,24 @@ async def abrogate_contract(pool, planning_detail_id: int, resignation_date: dat
             # 3. Mettre à jour le statut du contrat
             update_contract_query = """
                                     UPDATE Contrat
-                                    SET statut_contrat = 'Terminé', \
-                                        date_fin       = %s, \
-                                        duree          = 'Déterminée'
-                                    WHERE contrat_id = %s; \
+                                    SET statut_contrat = 'Terminé', -- 'Terminé' est une valeur valide pour l'ENUM 'statut_contrat'
+                                        date_fin = %s, -- date_fin est de type VARCHAR(50) dans le schéma
+                                        duree = 'Déterminée' -- 'Déterminée' est une valeur valide pour l'ENUM 'duree'
+                                    WHERE contrat_id = %s;
                                     """
             await cursor.execute(update_contract_query, (resignation_date, current_contrat_id))
 
+            # Commit la transaction pour que les changements soient persistants
+            await conn.commit()
             print(
                 f"Le contrat {current_contrat_id} a été marqué comme 'Terminé' avec date de fin {resignation_date} avec succès.")
             return True
 
     except Exception as e:
         print(f"Erreur lors de l'abrogation du contrat ou de la suppression des traitements: {e}")
+        # Rollback en cas d'erreur
+        if conn:
+            await conn.rollback()
         return False
     finally:
         if conn:
@@ -143,10 +159,13 @@ async def main_contract_management():
                     continue
 
                 print(f"\nInformations pour planning_detail_id {planning_detail_id}:")
+                print(f"  Client: {detail_info['client_nom']}") # Affichage du nom du client
+                print(f"  Type de traitement: {detail_info['typeTraitement']}") # Affichage du type de traitement
                 print(f"  Date de planification: {detail_info['date_planification']}")
-                print(f"  Statut actuel: {detail_info['statut']}")
+                print(f"  Statut actuel: {detail_info['statut']} (valeurs possibles: 'Effectué', 'À venir')") # Clarification des valeurs de l'ENUM
                 print(f"  Associé au planning_id: {detail_info['planning_id']}")
                 print(f"  Associé au contrat_id: {detail_info['contrat_id']}")
+
 
                 print("\nOptions disponibles:")
                 print("1. Abroger le contrat (supprime les traitements futurs et termine le contrat)")

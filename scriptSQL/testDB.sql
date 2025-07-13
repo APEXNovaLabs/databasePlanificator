@@ -19,7 +19,7 @@ INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, statut_contr
 INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, statut_contrat, duree_contrat, duree, categorie) VALUES
 ((SELECT client_id FROM Client WHERE nom = 'Martin' AND prenom = 'Sophie'), '2023-03-20', '2023-04-01', '2024-03-31', 'Terminé', 12, 'Déterminée', 'Nouveau'),
 ((SELECT client_id FROM Client WHERE nom = 'Martin' AND prenom = 'Sophie'), '2024-03-10', '2024-04-01', '2025-03-31', 'Actif', 12, 'Déterminée', 'Renouvellement'),
-((SELECT client_id FROM Client WHERE nom = 'Martin' AND prenom = 'Sophie'), '2025-04-01', NULL, '2025-04-01', 'Actif', NULL, 'Indeterminée', 'Renouvellement');
+((SELECT client_id FROM Client WHERE nom = 'Martin' AND prenom = 'Sophie'), '2025-04-01', '2025-04-01', '2025-04-01', 'Actif', NULL, 'Indeterminée', 'Renouvellement');
 
 -- Client 3: GlobalCorp (Organisation)
 INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, statut_contrat, duree_contrat, duree, categorie) VALUES
@@ -40,12 +40,20 @@ INSERT INTO Contrat (client_id, date_contrat, date_debut, date_fin, statut_contr
 ((SELECT client_id FROM Client WHERE nom = 'TechInnov SARL'), '2025-01-20', '2025-02-01', NULL, 'Actif', NULL, 'Indeterminée', 'Renouvellement');
 
 -- Insertion des types de traitement (si non déjà présents)
--- Les types de traitement sont déjà définis dans votre schéma, je vais donc utiliser leurs IDs.
 -- Assurez-vous que ces IDs correspondent à votre table TypeTraitement.
--- Exemple: 1: Dératisation (PC), 2: Désinfection (PC), 3: Désinsectisation (PC), 4: Fumigation (PC),
--- 5: Nettoyage industriel (NI), 6: Anti termites (AT), 7: Ramassage ordure
+-- Voici les insertions pour s'assurer que les types de traitement existent avant de les référencer.
+-- Si ces valeurs existent déjà, ces INSERTs échoueront ou n'auront pas d'effet selon votre configuration (e.g. IGNORE, ON DUPLICATE KEY UPDATE)
+-- Pour éviter des erreurs si la table est vide ou si des entrées manquent :
+INSERT IGNORE INTO TypeTraitement (typeTraitement) VALUES
+('Dératisation (PC)'),
+('Désinfection (PC)'),
+('Désinsectisation (PC)'),
+('Fumigation (PC)'),
+('Nettoyage industriel (NI)'),
+('Anti termites (AT)'),
+('Ramassage ordure');
 
--- Insertion des traitements (3 par contrat)
+-- Insertion des traitements (3 par client)
 -- Client 1: Dupont Jean
 INSERT INTO Traitement (contrat_id, id_type_traitement) VALUES
 ((SELECT contrat_id FROM Contrat WHERE client_id = (SELECT client_id FROM Client WHERE nom = 'Dupont' AND prenom = 'Jean') AND date_contrat = '2023-01-15'), (SELECT id_type_traitement FROM TypeTraitement WHERE typeTraitement = 'Dératisation (PC)')),
@@ -370,7 +378,7 @@ SET @planning_id_techinnov_fumigation_2024 = LAST_INSERT_ID();
 INSERT INTO PlanningDetails (planning_id, date_planification, statut) VALUES
 (@planning_id_techinnov_fumigation_2024, '2024-07-20', 'Effectué'), (@planning_id_techinnov_fumigation_2024, '2024-10-20', 'Effectué'),
 (@planning_id_techinnov_fumigation_2024, '2025-01-20', 'Effectué'), (@planning_id_techinnov_fumigation_2024, '2025-04-20', 'Effectué'),
-(@planning_id_techinnov_fumigation_2024, '2025-07-20', 'À venir');
+(@planning_id_techinnov_fumigation_2024, '2025-07-20', 'À venir'); -- Correction ici: utilisation de @planning_id_techinnov_fumigation_2024
 
 -- Contrat 2 (2024-08-01): Nettoyage industriel (NI)
 INSERT INTO Planning (traitement_id, date_debut_planification, mois_debut, mois_fin, duree_traitement, redondance, date_fin_planification) VALUES
@@ -474,6 +482,8 @@ INSERT INTO Signalement (planning_detail_id, motif, type) VALUES
 
 
 -- Insertion de l'historique
+-- Je vais insérer un historique pour chaque planning_detail 'Effectué'.
+-- S'il y a un signalement pour ce planning_detail, je le lierai.
 INSERT INTO Historique (facture_id, planning_detail_id, signalement_id, date_historique, contenu, issue, action)
 SELECT
     f.facture_id,

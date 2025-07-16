@@ -220,14 +220,6 @@ CREATE TABLE PlanningDetails (
                                  FOREIGN KEY (planning_id) REFERENCES Planning(planning_id) ON DELETE CASCADE
 );
 
-/*
-    Inutilisée pour des raisons de dépendance circulaire au niveau des deux table
-    Ajouter la clé étrangère à Planning après que PlanningDetails existes
-
-    ALTER TABLE Planning
-    ADD FOREIGN KEY (planning_detail_id) REFERENCES PlanningDetails(planning_detail_id) ON DELETE CASCADE;
-*/
-
 -- Table Facture (Pour la facturation de chaque service effectué)
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,

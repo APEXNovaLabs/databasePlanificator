@@ -235,9 +235,9 @@ CREATE TABLE Facture (
                          reference_facture VARCHAR(30),
                          montant INT NOT NULL,
                          mode ENUM('Chèque', 'Espèce', 'Mobile Money', 'Virement'),
-                         date_cheque DATE NULL,
+                         date_cheque DATE NULL, -- Valide aussi pour tous
                          numero_cheque VARCHAR(50) NULL,
-                         date_virement DATE NULL,
+                         date_virement DATE NULL, -- Valide pour tous
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé', 'À venir') DEFAULT 'Non payé',
                          axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL,

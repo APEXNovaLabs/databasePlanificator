@@ -162,6 +162,7 @@ CREATE TABLE Client (
 CREATE TABLE Contrat (
                          contrat_id INT PRIMARY KEY AUTO_INCREMENT,
                          client_id INT NOT NULL,
+                         reference_contrat VARCHAR(20),
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin VARCHAR(50),
@@ -231,6 +232,7 @@ CREATE TABLE PlanningDetails (
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          planning_detail_id INT NOT NULL,
+                         reference_facture VARCHAR(30),
                          montant INT NOT NULL,
                          mode ENUM('Chèque', 'Espèce'),
                          date_traitement DATE NOT NULL,
@@ -296,5 +298,5 @@ CREATE TABLE Historique (
 
 /*
     Historique regroupe toutes les informations utiles pour chaque traitement effectué
-    Modifié et corrigé le 30 Avril 2025
+    Modifié et corrigé le 16 Juillet 2025
 */

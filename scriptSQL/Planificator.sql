@@ -162,6 +162,7 @@ CREATE TABLE Client (
 CREATE TABLE Contrat (
                          contrat_id INT PRIMARY KEY AUTO_INCREMENT,
                          client_id INT NOT NULL,
+                         reference_contrat VARCHAR(20),
                          date_contrat DATE NOT NULL,
                          date_debut DATE NOT NULL,
                          date_fin VARCHAR(50),
@@ -231,8 +232,13 @@ CREATE TABLE PlanningDetails (
 CREATE TABLE Facture (
                          facture_id INT PRIMARY KEY AUTO_INCREMENT,
                          planning_detail_id INT NOT NULL,
+                         reference_facture VARCHAR(30),
                          montant INT NOT NULL,
-                         mode ENUM('Chèque', 'Espèce'),
+                         mode ENUM('Chèque', 'Espèce', 'Mobile Money', 'Virement'),
+                         etablissemnt_payeur VARCHAR(50), -- Pour la chèque uniquement
+                         date_cheque DATE NULL, -- Valide aussi pour tous
+                         numero_cheque VARCHAR(50) NULL,
+                         date_virement DATE NULL, -- Valide pour tous
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé', 'À venir') DEFAULT 'Non payé',
                          axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL,
@@ -296,5 +302,5 @@ CREATE TABLE Historique (
 
 /*
     Historique regroupe toutes les informations utiles pour chaque traitement effectué
-    Modifié et corrigé le 30 Avril 2025
+    Modifié et corrigé le 16 Juillet 2025
 */

@@ -235,6 +235,7 @@ CREATE TABLE Facture (
                          reference_facture VARCHAR(30),
                          montant INT NOT NULL,
                          mode ENUM('Chèque', 'Espèce', 'Mobile Money', 'Virement'),
+                         etablissemnt_payeur VARCHAR(50), -- Pour la chèque uniquement
                          date_cheque DATE NULL, -- Valide aussi pour tous
                          numero_cheque VARCHAR(50) NULL,
                          date_virement DATE NULL, -- Valide pour tous

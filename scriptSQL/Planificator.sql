@@ -234,7 +234,7 @@ CREATE TABLE Facture (
                          planning_detail_id INT NOT NULL,
                          reference_facture VARCHAR(30),
                          montant INT NOT NULL,
-                         mode ENUM('Chèque', 'Espèce'),
+                         mode ENUM('Chèque', 'Espèce', 'Mobile Money', 'Virement'),
                          date_cheque DATE NULL,
                          numero_cheque VARCHAR(50) NULL,
                          date_virement DATE NULL,

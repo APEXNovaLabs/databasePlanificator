@@ -679,3 +679,359 @@ def generate_comprehensive_treatment_report_excel(data: list[dict], client_full_
     except Exception as e:
         print(f"Erreur lors de la génération du fichier Excel du rapport de traitement : {e}")
 
+# --- Fonction de récupération des traitements pour un mois donné (pour tous les clients) ---
+async def get_traitements_for_month(pool, year: int, month: int):
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT co.reference_contrat   AS `Référence Contrat`, -- Ajout du numéro de contrat
+                           pd.date_planification  AS `Date du traitement`,
+                           tt.typeTraitement      AS `Traitement concerné`,
+                           tt.categorieTraitement AS `Catégorie du traitement`,
+                           CONCAT(c.nom, ' ', COALESCE(c.prenom, '')) AS `Client concerné`,
+                           c.categorie            AS `Catégorie du client`,
+                           c.axe                  AS `Axe du client`,
+                           pd.statut              AS `Etat traitement`
+                    FROM PlanningDetails pd
+                             JOIN Planning p ON pd.planning_id = p.planning_id
+                             JOIN Traitement t ON p.traitement_id = t.traitement_id
+                             JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
+                             JOIN Contrat co ON t.contrat_id = co.contrat_id
+                             JOIN Client c ON co.client_id = c.client_id
+                    WHERE YEAR(pd.date_planification) = %s
+                      AND MONTH(pd.date_planification) = %s
+                    ORDER BY pd.date_planification;
+                    """
+            await cursor.execute(query, (year, month))
+            result = await cursor.fetchall()
+            return result
+    except Exception as e:
+        print(f"Erreur lors de la récupération des traitements : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
+
+# --- Fonction de récupération de toutes les combinaisons année-mois contenant des traitements ---
+async def get_all_existing_treatment_months(pool):
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT DISTINCT
+                        YEAR(date_planification) AS annee,
+                        MONTH(date_planification) AS mois
+                    FROM PlanningDetails
+                    ORDER BY annee DESC, mois DESC;
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchall()
+            return result
+    except Exception as e:
+        print(f"Erreur lors de la récupération des mois avec traitements : {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
+
+# --- Fonction pour générer le fichier Excel des traitements (pour tous les clients) ---
+def generate_traitements_excel(data: list[dict], year: int, month: int):
+    month_name_fr = datetime.date(year, month, 1).strftime('%B').capitalize()
+    file_name = f"traitements-{month_name_fr}-{year}.xlsx"
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Traitements {month_name_fr} {year}"
+
+    # Styles
+    bold_font = Font(bold=True)
+    header_font = Font(bold=True, size=14)
+    center_align = Alignment(horizontal='center', vertical='center')
+    thin_border = Border(left=Side(style='thin'),
+                         right=Side(style='thin'),
+                         top=Side(style='thin'),
+                         bottom=Side(style='thin'))
+
+    # Définition des couleurs de remplissage
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid") # Rouge clair
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid") # Vert clair
+
+    # Titre du rapport
+    ws.cell(row=1, column=1, value=f"Rapport des Traitements du mois de {month_name_fr} {year}").font = header_font
+    ws.cell(row=1, column=1).alignment = center_align
+    # Ajuster le nombre de colonnes fusionnées au nombre réel de colonnes de données
+    num_data_cols = len(data[0]) if data else 7 # Fallback if data is empty
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_data_cols)
+
+    # Nombre total de traitements
+    total_traitements = len(data)
+    ws.cell(row=3, column=1, value=f"Nombre total de traitements ce mois-ci : {total_traitements}").font = bold_font
+
+    # Ligne vide pour la séparation
+    ws.cell(row=4, column=1, value="")
+
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        ws.cell(row=5, column=1, value="Aucun traitement trouvé pour ce mois.").border = thin_border
+        ws.merge_cells(start_row=5, start_column=1, end_row=5, end_column=num_data_cols)
+    else:
+        headers = df.columns.tolist()
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=5, column=col_idx, value=header)
+            cell.font = bold_font
+            cell.border = thin_border # Appliquer la bordure aux en-têtes
+
+        # Itérer sur les données et appliquer la couleur
+        for r_idx, row_dict in enumerate(data, start=6):
+            for c_idx, col_name in enumerate(headers, 1): # Itérer sur les noms de colonnes pour maintenir l'ordre
+                value = row_dict.get(col_name, 'N/A') # Obtenir la valeur par nom de colonne
+                cell = ws.cell(row=r_idx, column=c_idx, value=value)
+                cell.border = thin_border # Appliquer la bordure aux cellules de données
+
+                # Appliquer la couleur si c'est la colonne 'Etat traitement'
+                if col_name == 'Etat traitement':
+                    if value == 'Effectué':
+                        cell.fill = green_fill # CORRIGÉ: vert pour "Effectué"
+                    elif value == 'À venir':
+                        cell.fill = yellow_fill # AJOUTÉ: jaune pour "À venir"
+                    elif value in ['Annulé', 'Reporté']: # AJOUTÉ: rouge pour "Annulé" ou "Reporté"
+                        cell.fill = red_fill
+
+    max_col_for_width = len(df.columns) if not df.empty else num_data_cols
+
+    for i in range(1, max_col_for_width + 1):
+        column_letter = get_column_letter(i)
+        length = 0
+        for row_idx in range(1, ws.max_row + 1):
+            cell = ws.cell(row=row_idx, column=i)
+            if cell.value is not None:
+                if isinstance(cell.value, (datetime.date, datetime.datetime)):
+                    cell_length = len(cell.value.strftime('%Y-%m-%d'))
+                else:
+                    cell_length = len(str(cell.value))
+                length = max(length, cell_length)
+        ws.column_dimensions[column_letter].width = length + 2
+
+    try:
+        output = BytesIO()
+        wb.save(output)
+        with open(file_name, 'wb') as f:
+            f.write(output.getvalue())
+
+        print(f"Fichier '{file_name}' généré avec succès.")
+    except Exception as e:
+        print(f"Erreur lors de la génération du fichier Excel des traitements : {e}")
+
+# --- Fonction principale pour exécuter la génération de rapport ---
+async def main_report_menu():
+    pool = None
+    try:
+        print("\n--- Configuration de la connexion à la base de données ---")
+        db_host = input("Entrez l'hôte de la base de données (ex: localhost): ")
+        db_user = input("Entrez le nom d'utilisateur de la base de données (ex: root): ")
+        db_password = input("Entrez le mot de passe de la base de données: ")
+        db_name = input("Entrez le nom de la base de données (ex: Planificator): ")
+
+        pool = await DBConnection(db_host, db_user, db_password, db_name)
+        if pool is None:
+            print("Échec de la connexion à la base de données. Annulation de l'opération.")
+            return
+
+        continue_generating_reports = True
+        while continue_generating_reports:
+            print("\n--- Menu de Génération de Rapports ---")
+            print("1. Générer un rapport de tous les traitements pour un mois précis (tous clients)")
+            print("2. Générer un rapport de toutes les factures pour un client sur une année spécifique")
+            print("3. Quitter")
+
+            choice = input("Entrez votre choix (1-3): ")
+
+            if choice == '1':
+                # Rapport de tous les traitements pour un mois précis (tous clients)
+                all_existing_months_data = await get_all_existing_treatment_months(pool)
+
+                selected_year = None
+                selected_month = None
+
+                if all_existing_months_data:
+                    distinct_years = sorted(list(set(entry['annee'] for entry in all_existing_months_data)), reverse=True)
+
+                    print("\nAnnées contenant des traitements déjà enregistrés :")
+                    for i, year in enumerate(distinct_years):
+                        print(f"  {i + 1}. {year}")
+                    print("  0. Entrer une autre année manuellement")
+
+                    while True:
+                        try:
+                            choice_year = int(input("Choisissez un numéro d'année dans la liste ou '0' pour entrer manuellement : "))
+                            if 0 < choice_year <= len(distinct_years):
+                                selected_year = distinct_years[choice_year - 1]
+                                break
+                            elif choice_year == 0:
+                                while True:
+                                    try:
+                                        year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                                        selected_year = int(year_input)
+                                        if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                                            print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                                            continue
+                                        break
+                                    except ValueError:
+                                        print("Entrée invalide. Veuillez entrer un nombre pour l'année.")
+                                break
+                            else:
+                                print("Choix invalide. Veuillez réessayer.")
+                        except ValueError:
+                            print("Entrée invalide. Veuillez entrer un numéro.")
+
+                    if selected_year:
+                        months_for_selected_year = sorted(list(set(entry['mois'] for entry in all_existing_months_data if entry['annee'] == selected_year)), reverse=True)
+
+                        if months_for_selected_year:
+                            print(f"\nMois disponibles pour l'année {selected_year} :")
+                            for i, month_num in enumerate(months_for_selected_year):
+                                month_name = datetime.date(selected_year, month_num, 1).strftime('%B').capitalize()
+                                print(f"  {i + 1}. {month_name} ({month_num})")
+                            print("  0. Entrer un autre mois manuellement")
+
+                            while True:
+                                try:
+                                    choice_month = int(input(f"Choisissez un numéro de mois pour {selected_year} ou '0' pour entrer manuellement : "))
+                                    if 0 < choice_month <= len(months_for_selected_year):
+                                        selected_month = months_for_selected_year[choice_month - 1]
+                                        break
+                                    elif choice_month == 0:
+                                        while True:
+                                            try:
+                                                month_input = input("Veuillez entrer le numéro du mois (1-12) : ")
+                                                selected_month = int(month_input)
+                                                if not (1 <= selected_month <= 12):
+                                                    print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                                                    continue
+                                                break
+                                            except ValueError:
+                                                print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
+                                        break
+                                    else:
+                                        print("Choix invalide. Veuillez réessayer.")
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un numéro.")
+                        else:
+                            print(f"\nAucun traitement trouvé pour l'année {selected_year}. Veuillez entrer le mois manuellement.")
+                            while True:
+                                try:
+                                    month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
+                                    selected_month = int(month_input)
+                                    if not (1 <= selected_month <= 12):
+                                        print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                                        continue
+                                    break
+                                except ValueError:
+                                    print("Entrée invalide. Veuillez entrer un nombre pour le mois.")
+
+                else:
+                    print("\nAucun traitement trouvé dans la base de données. Veuillez entrer le mois et l'année manuellement.")
+                    while True:
+                        try:
+                            year_input = input("Veuillez entrer l'année pour le rapport (ex: 2023) : ")
+                            month_input = input("Veuillez entrer le numéro du mois (1-12) pour le rapport (ex: 6 pour Juin) : ")
+
+                            selected_year = int(year_input)
+                            selected_month = int(month_input)
+
+                            if not (1 <= selected_month <= 12):
+                                print("Numéro de mois invalide. Veuillez entrer un nombre entre 1 et 12.")
+                                continue
+                            if not (2000 <= selected_year <= datetime.datetime.now().year + 5):
+                                print(f"Année invalide. Veuillez entrer une année entre 2000 et {datetime.datetime.now().year + 5}.")
+                                continue
+                            break
+                        except ValueError:
+                            print("Entrée invalide. Veuillez entrer un nombre pour l'année et le mois.")
+
+                if selected_year is None or selected_month is None:
+                    print("Sélection de l'année ou du mois annulée. Retour au menu principal.")
+                    continue # Retourner au menu principal
+
+                print(f"\nPréparation du rapport des traitements pour {datetime.date(selected_year, selected_month, 1).strftime('%B').capitalize()} {selected_year}...")
+                traitements_data = await get_traitements_for_month(pool, selected_year, selected_month)
+                generate_traitements_excel(traitements_data, selected_year, selected_month)
+
+            elif choice == '2':
+                # Rapport de toutes les factures pour un client sur une année spécifique
+                print("\n--- Aperçu des clients et de leurs factures ---")
+                client_infos = await obtenirInformationsClients(pool)
+                if not client_infos:
+                    print("Aucun client trouvé dans la base de données.")
+                    continue
+
+                print("\nListe des clients et leurs informations de facture:")
+                for i, client in enumerate(client_infos):
+                    print(f"{i + 1}. {client['nomComplet']} (Factures: {client['total_factures']}, Mois: {client['facture_months'] if client['facture_months'] else 'Aucun'})")
+
+                client_index = input("Entrez le numéro du client pour le rapport annuel: ")
+                try:
+                    client_index = int(client_index) - 1
+                    if 0 <= client_index < len(client_infos):
+                        selected_client = client_infos[client_index]
+                        client_id = selected_client['client_id']
+                        client_full_name = selected_client['nomComplet']
+
+                        year_input = int(input("Entrez l'année pour le rapport annuel (ex: 2023): "))
+                        start_date = datetime.date(year_input, 1, 1)
+                        end_date = datetime.date(year_input, 12, 31)
+                        report_period_str = f"Année {year_input}"
+
+                        print(f"Récupération des données complètes pour {client_full_name} ({report_period_str})...")
+                        # Utilisez la fonction correcte pour les traitements ici
+                        comprehensive_data = await get_treatments_data_for_client_comprehensive(pool, client_id, start_date, end_date)
+                        if comprehensive_data:
+                            print(f"Génération du rapport complet pour {client_full_name}...")
+                            # Utilisez la fonction correcte pour générer le rapport de traitements
+                            generate_comprehensive_treatment_report_excel(comprehensive_data, client_full_name, report_period_str)
+                        else:
+                            print(f"Aucune donnée de traitement complète trouvée pour {client_full_name} pour l'année {year_input}.")
+                    else:
+                        print("Numéro de client invalide.")
+                except ValueError:
+                    print("Entrée invalide. Veuillez entrer un nombre.")
+                except Exception as e:
+                    print(f"Une erreur inattendue est survenue : {e}")
+
+            elif choice == '3':
+                print("Quitter le programme.")
+                continue_generating_reports = False
+            else:
+                print("Choix invalide. Veuillez réessayer.")
+
+            if continue_generating_reports: # Demander si l'utilisateur veut générer un autre fichier
+                while True:
+                    reponse = input("\nVoulez-vous générer un autre rapport ? (oui/non) : ").lower().strip()
+                    if reponse in ['oui', 'o']:
+                        break # Continuer la boucle principale
+                    elif reponse in ['non', 'n']:
+                        print("Fin de la génération des rapports.")
+                        return # Sortir de la fonction main_report_menu
+                    else:
+                        print("Réponse invalide. Veuillez répondre par 'oui' ou 'non'.")
+
+
+    except Exception as e:
+        print(f"Une erreur critique est survenue dans le menu principal : {e}")
+    finally:
+        if pool:
+            pool.close()
+            print("Connexion à la base de données fermée.")
+
+# Pour exécuter le menu principal
+if __name__ == "__main__":
+    # Ensure the directory for generated files exists
+    if not os.path.exists("./generated_reports"): # Changed folder name for clarity
+        os.makedirs("./generated_reports")
+    os.chdir("./generated_reports") # Change to this directory to save files there
+
+    asyncio.run(main_report_menu())

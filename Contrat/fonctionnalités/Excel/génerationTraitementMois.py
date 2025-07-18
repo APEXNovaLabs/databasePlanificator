@@ -6,11 +6,8 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
-import os # Import for file path handling
+import os
 
-# Assurez-vous que ce chemin est correct pour votre configuration
-# from Contrat.fonctionnalités.connexionDB import DBConnection
-# Placeholder for DBConnection if not available, assuming it provides an aiomysql connection pool
 async def DBConnection(host, user, password, db_name):
     try:
         # Create a connection pool using the provided credentials

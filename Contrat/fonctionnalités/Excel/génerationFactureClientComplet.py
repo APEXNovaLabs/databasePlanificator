@@ -6,8 +6,25 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
-# Assurez-vous que ce chemin est correct pour votre configuration
-from Contrat.fonctionnalités.connexionDB import DBConnection
+import os
+
+async def DBConnection(host, user, password, db_name):
+    try:
+        # Create a connection pool using the provided credentials
+        pool = await aiomysql.create_pool(
+            host=host,
+            user=user,
+            password=password,
+            db=db_name,
+            autocommit=True,
+            minsize=1,
+            maxsize=5
+        )
+        print("Connexion à la base de données établie avec succès.")
+        return pool
+    except Exception as e:
+        print(f"Erreur lors de la connexion à la base de données : {e}")
+        return None
 
 
 # --- Fonction de récupération des données de facture pour un client spécifique (pour rapport mensuel) ---
@@ -30,9 +47,9 @@ async def obtenirDataFactureClient(pool, client_id: int, year: int, month: int):
                            pd.statut               AS `Etat traitement`,
                            f.etat                  AS `Etat paiement (Payée ou non)`,
                            f.mode                  AS `Mode de Paiement`,
-                           f.date_cheque           AS `Date du Chèque`,
-                           f.numero_cheque         AS `Numéro du Chèque`,
-                           f.date_virement         AS `Date de Virement`,
+                           f.date_paiement         AS `Date de Paiement`,       -- Mise à jour: date_paiement pour toutes les modes
+                           f.numero_cheque         AS `Numéro du Chèque`,       -- Nouveau
+                           f.etablissemnt_payeur   AS `Établissement Payeur`,   -- Nouveau
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -93,9 +110,9 @@ async def get_factures_data_for_client_comprehensive(pool, client_id: int, start
                            f.date_traitement       AS `Date de Facturation`,
                            f.etat                  AS `Etat de Paiement`,
                            f.mode                  AS `Mode de Paiement`,
-                           f.date_cheque           AS `Date du Chèque`,
-                           f.numero_cheque         AS `Numéro du Chèque`,
-                           f.date_virement         AS `Date de Virement`,
+                           f.date_paiement         AS `Date de Paiement`,       -- Mise à jour: date_paiement pour toutes les modes
+                           f.numero_cheque         AS `Numéro du Chèque`,       -- Nouveau
+                           f.etablissemnt_payeur   AS `Établissement Payeur`,   -- Nouveau
                            COALESCE(
                                    (SELECT hp.new_amount
                                     FROM Historique_prix hp
@@ -336,9 +353,13 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
         df_invoice_data = pd.DataFrame(data)
 
         for r_idx, row_dict in enumerate(df_invoice_data.to_dict('records'), start=ligneActuelle):
+            # Gérer le numéro de facture: afficher "Aucun" si vide ou None
+            invoice_number = row_dict.get('Numéro Facture')
+            display_invoice_number = invoice_number if invoice_number else "Aucun"
+
             # Préparer les données de la ligne selon les en-têtes définis
             row_data = [
-                row_dict.get('Numéro Facture', 'N/A'),
+                display_invoice_number, # Utilisation de la valeur traitée
                 row_dict.get('Date de Planification', 'N/A'),
                 row_dict.get('Date de traitement', 'N/A'),
                 row_dict.get('Traitement (Type)', 'N/A'),
@@ -352,14 +373,16 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
             # Gérer les détails de paiement
             mode_paiement = row_dict.get('Mode de Paiement')
             details_paiement = "N/A"
+            date_paiement_obj = row_dict.get('Date de Paiement')
+            date_paiement_str = date_paiement_obj.strftime('%Y-%m-%d') if date_paiement_obj else 'N/A'
+
             if mode_paiement == 'Chèque':
-                date_cheque_str = row_dict.get('Date du Chèque').strftime('%Y-%m-%d') if row_dict.get('Date du Chèque') else 'N/A'
                 numero_cheque_str = row_dict.get('Numéro du Chèque', 'N/A')
-                details_paiement = f"Chèque: {numero_cheque_str} ({date_cheque_str})"
+                etablissement_payeur_str = row_dict.get('Établissement Payeur', 'N/A')
+                details_paiement = f"Chèque: {numero_cheque_str} ({date_paiement_str}, {etablissement_payeur_str})"
             elif mode_paiement == 'Virement':
-                date_virement_str = row_dict.get('Date de Virement').strftime('%Y-%m-%d') if row_dict.get('Date de Virement') else 'N/A'
-                details_paiement = f"Virement: ({date_virement_str})"
-            elif mode_paiement == 'Mobile Money': # Nouveau mode de paiement
+                details_paiement = f"Virement: ({date_paiement_str})"
+            elif mode_paiement == 'Mobile Money':
                 details_paiement = "Mobile Money"
             elif mode_paiement == 'Espèce':
                 details_paiement = "Paiement en espèces"
@@ -436,6 +459,7 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
     try:
         output = BytesIO()
         wb.save(output)
+        # Save to a file in the current directory
         with open(file_name, 'wb') as f:
             f.write(output.getvalue())
 
@@ -530,8 +554,12 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         df_invoice_data = pd.DataFrame(data)
 
         for r_idx, row_dict in enumerate(df_invoice_data.to_dict('records'), start=current_row):
+            # Gérer le numéro de facture: afficher "Aucun" si vide ou None
+            invoice_number = row_dict.get('Numéro Facture')
+            display_invoice_number = invoice_number if invoice_number else "Aucun"
+
             row_data = [
-                row_dict.get('Numéro Facture', 'N/A'),
+                display_invoice_number, # Utilisation de la valeur traitée
                 row_dict.get('Date de Planification', 'N/A'),
                 row_dict.get('Date de Facturation', 'N/A'),
                 row_dict.get('Type de Traitement', 'N/A'),
@@ -545,14 +573,16 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
             # Gérer les détails de paiement
             mode_paiement = row_dict.get('Mode de Paiement')
             details_paiement = "N/A"
+            date_paiement_obj = row_dict.get('Date de Paiement')
+            date_paiement_str = date_paiement_obj.strftime('%Y-%m-%d') if date_paiement_obj else 'N/A'
+
             if mode_paiement == 'Chèque':
-                date_cheque_str = row_dict.get('Date du Chèque').strftime('%Y-%m-%d') if row_dict.get('Date du Chèque') else 'N/A'
                 numero_cheque_str = row_dict.get('Numéro du Chèque', 'N/A')
-                details_paiement = f"Chèque: {numero_cheque_str} ({date_cheque_str})"
+                etablissement_payeur_str = row_dict.get('Établissement Payeur', 'N/A')
+                details_paiement = f"Chèque: {numero_cheque_str} ({date_paiement_str}, {etablissement_payeur_str})"
             elif mode_paiement == 'Virement':
-                date_virement_str = row_dict.get('Date de Virement').strftime('%Y-%m-%d') if row_dict.get('Date de Virement') else 'N/A'
-                details_paiement = f"Virement: ({date_virement_str})"
-            elif mode_paiement == 'Mobile Money': # Nouveau mode de paiement
+                details_paiement = f"Virement: ({date_paiement_str})"
+            elif mode_paiement == 'Mobile Money':
                 details_paiement = "Mobile Money"
             elif mode_paiement == 'Espèce':
                 details_paiement = "Paiement en espèces"
@@ -628,6 +658,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         for row_idx in range(1, ws.max_row + 1):
             cell = ws.cell(row=row_idx, column=i)
             if cell.value is not None:
+                # Gérer les dates pour le calcul de la largeur
                 if isinstance(cell.value, (datetime.date, datetime.datetime)):
                     cell_length = len(cell.value.strftime('%Y-%m-%d'))
                 else:
@@ -638,6 +669,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
     try:
         output = BytesIO()
         wb.save(output)
+        # Save to a file in the current directory
         with open(file_name, 'wb') as f:
             f.write(output.getvalue())
 
@@ -650,7 +682,13 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
 async def main_invoice_report_menu():
     pool = None
     try:
-        pool = await DBConnection()
+        print("\n--- Configuration de la connexion à la base de données ---")
+        db_host = input("Entrez l'hôte de la base de données (ex: localhost): ")
+        db_user = input("Entrez le nom d'utilisateur de la base de données (ex: root): ")
+        db_password = input("Entrez le mot de passe de la base de données: ")
+        db_name = input("Entrez le nom de la base de données (ex: Planificator): ")
+
+        pool = await DBConnection(db_host, db_user, db_password, db_name)
         if pool is None:
             print("Échec de la connexion à la base de données. Annulation de l'opération.")
             return
@@ -658,175 +696,116 @@ async def main_invoice_report_menu():
         continue_generating_reports = True
         while continue_generating_reports:
             print("\n--- Aperçu des clients et de leurs factures ---")
-            informationsClient = await obtenirInformationsClients(pool)
+            client_infos = await obtenirInformationsClients(pool)
+            if not client_infos:
+                print("Aucun client trouvé dans la base de données.")
+                break
 
-            if informationsClient:
-                df_counts = pd.DataFrame(informationsClient)
-                df_counts.rename(columns={'nomComplet': 'Nom du Client', 'total_factures': 'Nb. Factures',
-                                          'facture_months': 'Mois des Factures'}, inplace=True)
-                df_counts.index = df_counts.index + 1
-                print(df_counts[['Nom du Client', 'Nb. Factures', 'Mois des Factures']].to_string())
-                print("\n")
-            else:
-                print("Aucun client trouvé ou aucune facture enregistrée.")
+            print("\nListe des clients et leurs informations de facture:")
+            for i, client in enumerate(client_infos):
+                print(f"{i + 1}. {client['nomComplet']} (Factures: {client['total_factures']}, Mois: {client['facture_months'] if client['facture_months'] else 'Aucun'})")
 
-            clients_for_selection = await obtenirTousClient(pool)
+            print("\n--- Menu de Génération de Rapports ---")
+            print("1. Générer un rapport mensuel pour un client")
+            print("2. Générer un rapport complet/annuel pour un client")
+            print("3. Quitter")
 
-            client_map = {}
-            for i, client in enumerate(clients_for_selection):
-                client_map[str(i + 1)] = client
+            choice = input("Entrez votre choix (1-3): ")
 
-            client_id_selected = None
-            client_full_name_selected = None
+            if choice == '1':
+                client_index = input("Entrez le numéro du client pour le rapport mensuel: ")
+                try:
+                    client_index = int(client_index) - 1
+                    if 0 <= client_index < len(client_infos):
+                        selected_client = client_infos[client_index]
+                        client_id = selected_client['client_id']
+                        client_full_name = selected_client['nomComplet']
 
-            while client_id_selected is None:
-                choice = input(
-                    "Veuillez entrer le numéro du client dans la liste ci-dessus, ou son nom complet (Nom Prénom) : ").strip()
+                        year = int(input("Entrez l'année (ex: 2023): "))
+                        month = int(input("Entrez le mois (1-12): "))
 
-                if choice.isdigit():
-                    if choice in client_map:
-                        selected_client = client_map[choice]
-                        client_id_selected = selected_client['client_id']
-                        client_full_name_selected = selected_client['full_name']
-                        print(f"Client sélectionné : {client_full_name_selected}")
-                    else:
-                        print("Numéro invalide. Veuillez réessayer.")
-                else:
-                    client_full_name_selected = choice
-                    client_id_selected = await obtenirIDClientAvecNom(pool, client_full_name_selected)
-                    if client_id_selected is None:
-                        print(
-                            f"Client '{client_full_name_selected}' non trouvé. Veuillez vérifier le nom et réessayer.")
-                    else:
-                        print(f"Client trouvé : {client_full_name_selected}")
-
-            report_generated_successfully = False
-            while not report_generated_successfully:
-                report_type_choice = input(
-                    "\nQuel type de rapport souhaitez-vous générer pour ce client ?\n"
-                    "  1. Facture pour un mois spécifique\n"
-                    "  2. Toutes les factures pour une année spécifique\n"
-                    "  3. Toutes les factures depuis le début jusqu'au dernier traitement planifié\n"
-                    "Votre choix (1, 2 ou 3) : "
-                ).strip()
-
-                if report_type_choice == '1':
-                    try:
-                        async with pool.acquire() as conn_for_months:
-                            async with conn_for_months.cursor(aiomysql.DictCursor) as cursor:
-                                query_client_months = """
-                                                      SELECT DISTINCT YEAR(f.date_traitement)  AS annee,
-                                                                      MONTH(f.date_traitement) AS mois
-                                                      FROM Facture f
-                                                               JOIN PlanningDetails pd ON f.planning_detail_id = pd.planning_detail_id
-                                                               JOIN Planning p ON pd.planning_id = p.planning_id
-                                                               JOIN Traitement tr ON p.traitement_id = tr.traitement_id
-                                                               JOIN Contrat co ON tr.contrat_id = co.contrat_id
-                                                      WHERE co.client_id = %s
-                                                      ORDER BY annee DESC, mois DESC;
-                                                      """
-                                await cursor.execute(query_client_months, (client_id_selected,))
-                                client_available_months = await cursor.fetchall()
-                    except Exception as e:
-                        print(f"Erreur lors de la récupération des mois disponibles pour le client : {e}")
-                        client_available_months = []
-
-                    if not client_available_months:
-                        print("Aucune facture trouvée pour ce client pour des mois spécifiques.")
-                        continue
-
-                    print("\nMois avec des factures disponibles pour ce client :")
-                    for entry in client_available_months:
-                        month_name = datetime.date(entry['annee'], entry['mois'], 1).strftime('%B').capitalize()
-                        print(f"- {month_name} {entry['annee']}")
-
-                    while True:
-                        try:
-                            year_input = int(input("Entrez l'année (ex: 2023) : ").strip())
-                            month_input = int(input("Entrez le numéro du mois (1-12) : ").strip())
-                            if 1 <= month_input <= 12:
-                                break
-                            else:
-                                print("Mois invalide. Veuillez entrer un nombre entre 1 et 12.")
-                        except ValueError:
-                            print("Saisie invalide. Veuillez entrer un nombre pour l'année et le mois.")
-
-                    data_facture = await obtenirDataFactureClient(pool, client_id_selected, year_input, month_input)
-                    if data_facture:
-                        genererFactureExcel(data_facture, client_full_name_selected, year_input, month_input)
-                        report_generated_successfully = True
-                    else:
-                        print(
-                            f"Aucune donnée de facture trouvée pour {client_full_name_selected} en {month_name_fr} {year_input}.")
-                        response = input("Voulez-vous essayer un autre type de rapport pour ce client ? (oui/non): ").strip().lower()
-                        if response != 'oui':
-                            break # Sortir de la boucle interne pour re-sélectionner un client ou quitter
-
-                elif report_type_choice == '2':
-                    while True:
-                        try:
-                            year_input = int(input("Entrez l'année pour le rapport annuel (ex: 2023) : ").strip())
-                            break
-                        except ValueError:
-                            print("Année invalide. Veuillez entrer un nombre.")
-
-                    start_date = datetime.date(year_input, 1, 1)
-                    end_date = datetime.date(year_input, 12, 31)
-                    data_facture_comprehensive = await get_factures_data_for_client_comprehensive(
-                        pool, client_id_selected, start_date, end_date)
-
-                    if data_facture_comprehensive:
-                        generate_comprehensive_facture_excel(data_facture_comprehensive, client_full_name_selected,
-                                                             f"Année {year_input}")
-                        report_generated_successfully = True
-                    else:
-                        print(f"Aucune donnée de facture trouvée pour {client_full_name_selected} pour l'année {year_input}.")
-                        response = input("Voulez-vous essayer un autre type de rapport pour ce client ? (oui/non): ").strip().lower()
-                        if response != 'oui':
-                            break
-
-                elif report_type_choice == '3':
-                    min_date, max_date = await get_client_earliest_latest_invoice_dates(pool, client_id_selected)
-                    if min_date and max_date:
-                        data_facture_comprehensive = await get_factures_data_for_client_comprehensive(
-                            pool, client_id_selected, min_date, max_date)
-                        if data_facture_comprehensive:
-                            report_period_str = f"du {min_date.strftime('%Y-%m-%d')} au {max_date.strftime('%Y-%m-%d')}"
-                            generate_comprehensive_facture_excel(data_facture_comprehensive,
-                                                                 client_full_name_selected, report_period_str)
-                            report_generated_successfully = True
+                        print(f"Récupération des données de facture pour {client_full_name} ({month}/{year})...")
+                        invoice_data = await obtenirDataFactureClient(pool, client_id, year, month)
+                        if invoice_data:
+                            print(f"Génération du rapport mensuel pour {client_full_name}...")
+                            genererFactureExcel(invoice_data, client_full_name, year, month)
                         else:
-                            print(f"Aucune donnée de facture complète trouvée pour {client_full_name_selected}.")
-                            response = input("Voulez-vous essayer un autre type de rapport pour ce client ? (oui/non): ").strip().lower()
-                            if response != 'oui':
-                                break
+                            print(f"Aucune donnée de facture trouvée pour {client_full_name} en {month}/{year}.")
                     else:
-                        print(f"Impossible de déterminer les dates de facture pour {client_full_name_selected}.")
-                        response = input("Voulez-vous essayer un autre type de rapport pour ce client ? (oui/non): ").strip().lower()
-                        if response != 'oui':
-                            break
-                else:
-                    print("Choix de rapport invalide. Veuillez entrer 1, 2 ou 3.")
+                        print("Numéro de client invalide.")
+                except ValueError:
+                    print("Entrée invalide. Veuillez entrer un nombre.")
+                except Exception as e:
+                    print(f"Une erreur inattendue est survenue : {e}")
 
-            if report_generated_successfully:
-                continue_choice = input("\nVoulez-vous générer un autre rapport pour un autre client ? (oui/non) : ").strip().lower()
-                if continue_choice != 'oui':
-                    continue_generating_reports = False
+            elif choice == '2':
+                client_index = input("Entrez le numéro du client pour le rapport complet/annuel: ")
+                try:
+                    client_index = int(client_index) - 1
+                    if 0 <= client_index < len(client_infos):
+                        selected_client = client_infos[client_index]
+                        client_id = selected_client['client_id']
+                        client_full_name = selected_client['nomComplet']
+
+                        min_date, max_date = await get_client_earliest_latest_invoice_dates(pool, client_id)
+                        print(f"Dates de facture disponibles pour {client_full_name}:")
+                        print(f"  Première facture: {min_date if min_date else 'N/A'}")
+                        print(f"  Dernière facture: {max_date if max_date else 'N/A'}")
+
+                        report_type = input("Générer pour (A)nnée spécifique, (P)ériode spécifique, ou (T)outes les données? (A/P/T): ").upper()
+                        start_date = None
+                        end_date = None
+                        report_period_str = "Toutes les données"
+
+                        if report_type == 'A':
+                            year_input = int(input("Entrez l'année pour le rapport annuel (ex: 2023): "))
+                            start_date = datetime.date(year_input, 1, 1)
+                            end_date = datetime.date(year_input, 12, 31)
+                            report_period_str = f"Année {year_input}"
+                        elif report_type == 'P':
+                            start_date_str = input("Entrez la date de début (AAAA-MM-JJ): ")
+                            end_date_str = input("Entrez la date de fin (AAAA-MM-JJ): ")
+                            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                            report_period_str = f"Du {start_date_str} au {end_date_str}"
+                        elif report_type == 'T':
+                            pass # No date filters, get all data
+                        else:
+                            print("Choix de période invalide.")
+                            continue
+
+                        print(f"Récupération des données complètes pour {client_full_name}...")
+                        comprehensive_data = await get_factures_data_for_client_comprehensive(pool, client_id, start_date, end_date)
+                        if comprehensive_data:
+                            print(f"Génération du rapport complet pour {client_full_name}...")
+                            generate_comprehensive_facture_excel(comprehensive_data, client_full_name, report_period_str)
+                        else:
+                            print(f"Aucune donnée de facture complète trouvée pour {client_full_name} pour la période sélectionnée.")
+                    else:
+                        print("Numéro de client invalide.")
+                except ValueError:
+                    print("Entrée invalide. Veuillez entrer un nombre ou un format de date valide.")
+                except Exception as e:
+                    print(f"Une erreur inattendue est survenue : {e}")
+
+            elif choice == '3':
+                print("Quitter le programme.")
+                continue_generating_reports = False
             else:
-                # Si un rapport n'a pas été généré avec succès et que l'utilisateur ne veut pas essayer un autre type pour le même client,
-                # demander s'il veut choisir un nouveau client ou quitter.
-                continue_choice = input("\nVoulez-vous générer un rapport pour un autre client ou quitter ? (oui/quitter) : ").strip().lower()
-                if continue_choice == 'quitter':
-                    continue_generating_reports = False
+                print("Choix invalide. Veuillez réessayer.")
 
     except Exception as e:
-        print(f"Une erreur inattendue est survenue dans le script principal : {e}")
+        print(f"Une erreur critique est survenue dans le menu principal : {e}")
     finally:
         if pool:
-            print("\nFermeture du pool de connexions à la base de données...")
             pool.close()
-            await pool.wait_closed()
-            print("Pool de connexions fermé.")
+            print("Connexion à la base de données fermée.")
 
+# Pour exécuter le menu principal
 if __name__ == "__main__":
+    # Ensure the directory for generated files exists
+    if not os.path.exists("./generated_invoices"):
+        os.makedirs("./generated_invoices")
+    os.chdir("./generated_invoices") # Change to this directory to save files there
+
     asyncio.run(main_invoice_report_menu())

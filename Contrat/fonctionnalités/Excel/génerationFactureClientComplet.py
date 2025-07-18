@@ -11,14 +11,14 @@ import os # Import for file path handling
 # Assurez-vous que ce chemin est correct pour votre configuration
 # from Contrat.fonctionnalités.connexionDB import DBConnection
 # Placeholder for DBConnection if not available, assuming it provides an aiomysql connection pool
-async def DBConnection():
+async def DBConnection(host, user, password, db_name):
     try:
-        # Replace with your actual database credentials
+        # Create a connection pool using the provided credentials
         pool = await aiomysql.create_pool(
-            host='localhost', # Or your database host
-            user='root',      # Your database user
-            password='your_password', # Your database password
-            db='Planificator', # Your database name
+            host=host,
+            user=user,
+            password=password,
+            db=db_name,
             autocommit=True,
             minsize=1,
             maxsize=5
@@ -562,7 +562,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
             display_invoice_number = invoice_number if invoice_number else "Aucun"
 
             row_data = [
-                display_invoice_number,
+                display_invoice_number, # Utilisation de la valeur traitée
                 row_dict.get('Date de Planification', 'N/A'),
                 row_dict.get('Date de Facturation', 'N/A'),
                 row_dict.get('Type de Traitement', 'N/A'),
@@ -661,6 +661,7 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         for row_idx in range(1, ws.max_row + 1):
             cell = ws.cell(row=row_idx, column=i)
             if cell.value is not None:
+                # Gérer les dates pour le calcul de la largeur
                 if isinstance(cell.value, (datetime.date, datetime.datetime)):
                     cell_length = len(cell.value.strftime('%Y-%m-%d'))
                 else:
@@ -684,7 +685,13 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
 async def main_invoice_report_menu():
     pool = None
     try:
-        pool = await DBConnection()
+        print("\n--- Configuration de la connexion à la base de données ---")
+        db_host = input("Entrez l'hôte de la base de données (ex: localhost): ")
+        db_user = input("Entrez le nom d'utilisateur de la base de données (ex: root): ")
+        db_password = input("Entrez le mot de passe de la base de données: ")
+        db_name = input("Entrez le nom de la base de données (ex: Planificator): ")
+
+        pool = await DBConnection(db_host, db_user, db_password, db_name)
         if pool is None:
             print("Échec de la connexion à la base de données. Annulation de l'opération.")
             return
@@ -805,4 +812,3 @@ if __name__ == "__main__":
     os.chdir("./generated_invoices") # Change to this directory to save files there
 
     asyncio.run(main_invoice_report_menu())
-

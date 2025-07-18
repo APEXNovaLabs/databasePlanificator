@@ -356,9 +356,13 @@ def genererFactureExcel(data: list[dict], client_full_name: str, year: int, mont
         df_invoice_data = pd.DataFrame(data)
 
         for r_idx, row_dict in enumerate(df_invoice_data.to_dict('records'), start=ligneActuelle):
+            # Gérer le numéro de facture: afficher "Aucun" si vide ou None
+            invoice_number = row_dict.get('Numéro Facture')
+            display_invoice_number = invoice_number if invoice_number else "Aucun"
+
             # Préparer les données de la ligne selon les en-têtes définis
             row_data = [
-                row_dict.get('Numéro Facture', 'N/A'),
+                display_invoice_number, # Utilisation de la valeur traitée
                 row_dict.get('Date de Planification', 'N/A'),
                 row_dict.get('Date de traitement', 'N/A'),
                 row_dict.get('Traitement (Type)', 'N/A'),
@@ -553,8 +557,12 @@ def generate_comprehensive_facture_excel(data: list[dict], client_full_name: str
         df_invoice_data = pd.DataFrame(data)
 
         for r_idx, row_dict in enumerate(df_invoice_data.to_dict('records'), start=current_row):
+            # Gérer le numéro de facture: afficher "Aucun" si vide ou None
+            invoice_number = row_dict.get('Numéro Facture')
+            display_invoice_number = invoice_number if invoice_number else "Aucun"
+
             row_data = [
-                row_dict.get('Numéro Facture', 'N/A'),
+                display_invoice_number,
                 row_dict.get('Date de Planification', 'N/A'),
                 row_dict.get('Date de Facturation', 'N/A'),
                 row_dict.get('Type de Traitement', 'N/A'),

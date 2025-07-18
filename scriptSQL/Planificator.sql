@@ -228,9 +228,8 @@ CREATE TABLE Facture (
                          montant INT NOT NULL,
                          mode ENUM('Chèque', 'Espèce', 'Mobile Money', 'Virement'),
                          etablissemnt_payeur VARCHAR(50), -- Pour la chèque uniquement
-                         date_cheque DATE NULL, -- Valide aussi pour tous
                          numero_cheque VARCHAR(50) NULL,
-                         date_virement DATE NULL, -- Valide pour tous
+                         date_paiement DATE NULL, -- Valide pour tous
                          date_traitement DATE NOT NULL,
                          etat ENUM('Payé', 'Non payé', 'À venir') DEFAULT 'Non payé',
                          axe ENUM ('Nord (N)', 'Sud (S)', 'Est (E)', 'Ouest (O)', 'Centre (C)') NOT NULL,
@@ -294,5 +293,5 @@ CREATE TABLE Historique (
 
 /*
     Historique regroupe toutes les informations utiles pour chaque traitement effectué
-    Modifié et corrigé le 16 Juillet 2025
+    Modifié et corrigé le 18 Juillet 2025
 */

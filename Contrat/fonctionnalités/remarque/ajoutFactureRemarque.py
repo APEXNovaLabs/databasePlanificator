@@ -73,12 +73,13 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                 # 2. Récupérer les informations nécessaires pour la facture (axe, date_planification)
                 await cur.execute("""
                     SELECT
-                        c.axe,
+                        cl.axe,
                         pd.date_planification
-                    FROM Contrat c
-                    JOIN Traitement t ON c.contrat_id = t.contrat_id
-                    JOIN Planning p ON t.traitement_id = p.traitement_id
-                    JOIN PlanningDetails pd ON p.planning_id = pd.planning_id
+                    FROM PlanningDetails pd
+                    JOIN Planning p ON pd.planning_id = p.planning_id
+                    JOIN Traitement t ON p.traitement_id = t.traitement_id
+                    JOIN Contrat co ON t.contrat_id = co.contrat_id
+                    JOIN Client cl ON co.client_id = cl.client_id
                     WHERE pd.planning_detail_id = %s
                 """, (planning_detail_id,))
                 facture_details_from_planning = await cur.fetchone()

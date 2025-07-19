@@ -67,7 +67,8 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                     return
                 elif existing_facture_id and facture_etat != 'Payé':
                     print(f"**Information:** La remarque {remarque_id} est déjà associée à une facture (ID: {existing_facture_id}) qui est '{facture_etat}'. Vous pouvez choisir de créer une nouvelle facture ou de laisser l'ancienne en l'état.")
-
+                    # Pour cet exemple, nous allons toujours créer une nouvelle facture si l'ancienne n'est pas payée.
+                    # Une logique plus complexe pourrait demander à l'utilisateur de mettre à jour l'ancienne.
 
                 # 2. Récupérer les informations nécessaires pour la facture (axe, date_planification)
                 await cur.execute("""
@@ -370,11 +371,9 @@ async def main():
                     new_remarque_id = await creer_remarque(pool, selected_pd_id, contenu_remarque, issue_remarque, action_remarque)
 
                     if new_remarque_id:
-                        facture_choice = input("\nVoulez-vous créer une facture pour cette nouvelle remarque ? (oui/non) : ").strip().lower()
-                        if facture_choice == 'oui':
-                            await ajouter_facture_remarque(pool, new_remarque_id)
-                        else:
-                            print("Facture non créée pour cette remarque.")
+                        # Directement créer la facture après la création de la remarque
+                        print("\nCréation automatique de la facture pour la nouvelle remarque...")
+                        await ajouter_facture_remarque(pool, new_remarque_id)
                     else:
                         print("Impossible de créer la remarque. Opération annulée.")
 

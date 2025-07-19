@@ -184,6 +184,82 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
     except Exception as e:
         print(f"**Une erreur est survenue lors de l'ajout de la facture/remarque :** {e}")
 
+async def creer_remarque(pool, planning_detail_id: int, contenu: str, issue: str = None, action: str = None):
+    """
+    Crée une nouvelle remarque pour un PlanningDetail donné.
+    Retourne l'ID de la remarque nouvellement créée.
+    """
+    try:
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get client_id from planning_detail_id
+                await cur.execute("""
+                    SELECT cl.client_id
+                    FROM PlanningDetails pd
+                    JOIN Planning p ON pd.planning_id = p.planning_id
+                    JOIN Traitement tr ON p.traitement_id = tr.traitement_id
+                    JOIN Contrat co ON tr.contrat_id = co.contrat_id
+                    JOIN Client cl ON co.client_id = cl.client_id
+                    WHERE pd.planning_detail_id = %s
+                """, (planning_detail_id,))
+                client_info = await cur.fetchone()
+
+                if not client_info:
+                    print(f"**Erreur:** Impossible de trouver le client_id pour planning_detail_id {planning_detail_id}.")
+                    return None
+
+                client_id = client_info['client_id']
+
+                await cur.execute("""
+                    INSERT INTO Remarque (planning_detail_id, client_id, contenu, issue, action)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (planning_detail_id, client_id, contenu, issue, action))
+                new_remarque_id = cur.lastrowid
+                print(f"Remarque créée avec l'ID: {new_remarque_id} pour PlanningDetail ID: {planning_detail_id}.")
+                return new_remarque_id
+    except Exception as e:
+        print(f"**Erreur lors de la création de la remarque :** {e}")
+        return None
+
+async def get_effectue_planning_details(pool):
+    """
+    Récupère et affiche les détails de planification dont le statut est 'Effectué'.
+    Indique si une remarque est déjà associée à cette planification.
+    """
+    conn = None
+    try:
+        conn = await pool.acquire()
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+                    SELECT
+                        pd.planning_detail_id,
+                        pd.date_planification,
+                        tt.typeTraitement,
+                        CONCAT(cl.nom, ' ', COALESCE(cl.prenom, '')) AS client_nom_complet,
+                        co.reference_contrat,
+                        r.remarque_id IS NOT NULL AS has_remark,
+                        r.remarque_id,
+                        r.contenu AS existing_remarque_contenu
+                    FROM PlanningDetails pd
+                    JOIN Planning p ON pd.planning_id = p.planning_id
+                    JOIN Traitement tr ON p.traitement_id = tr.traitement_id
+                    JOIN TypeTraitement tt ON tr.id_type_traitement = tt.id_type_traitement
+                    JOIN Contrat co ON tr.contrat_id = co.contrat_id
+                    JOIN Client cl ON co.client_id = cl.client_id
+                    LEFT JOIN Remarque r ON pd.planning_detail_id = r.planning_detail_id
+                    WHERE pd.statut = 'Effectué'
+                    ORDER BY pd.date_planification DESC;
+                    """
+            await cursor.execute(query)
+            result = await cursor.fetchall()
+            return result
+    except Exception as e:
+        print(f"**Erreur lors de la récupération des planifications effectuées :** {e}")
+        return []
+    finally:
+        if conn:
+            pool.release(conn)
+
 async def main():
     pool = None
     try:
@@ -203,21 +279,77 @@ async def main():
         print("Connexion à la base de données établie avec succès.")
 
         while True:
-            print("\n--- Ajout d'une facture automatique pour une remarque ---")
-            remarque_id_input = input("Entrez l'ID de la remarque (laissez vide pour quitter) : ").strip()
-            if not remarque_id_input:
+            print("\n--- Menu Principal ---")
+            print("1. Gérer les remarques et factures pour les planifications effectuées")
+            print("2. Quitter")
+
+            main_choice = input("Entrez votre choix (1-2) : ").strip()
+
+            if main_choice == '1':
+                print("\n--- Planifications 'Effectué' disponibles ---")
+                planning_details = await get_effectue_planning_details(pool)
+
+                if not planning_details:
+                    print("Aucune planification 'Effectué' trouvée pour le moment.")
+                    continue
+
+                print(f"{'ID':<5} | {'Date Planif.':<15} | {'Type Traitement':<25} | {'Client':<30} | {'Contrat':<15} | {'Remarque Existante':<20}")
+                print("-" * 115)
+                for i, pd_info in enumerate(planning_details):
+                    remark_status = "Oui" if pd_info['has_remark'] else "Non"
+                    print(f"{pd_info['planning_detail_id']:<5} | {pd_info['date_planification'].strftime('%Y-%m-%d'):<15} | {pd_info['typeTraitement']:<25} | {pd_info['client_nom_complet']:<30} | {pd_info['reference_contrat']:<15} | {remark_status:<20}")
+
+                selected_pd_id = input("\nEntrez l'ID de la planification pour laquelle vous souhaitez ajouter/gérer une remarque (laissez vide pour annuler) : ").strip()
+                if not selected_pd_id:
+                    continue
+
+                try:
+                    selected_pd_id = int(selected_pd_id)
+                except ValueError:
+                    print("**Erreur :** L'ID de la planification doit être un nombre entier.")
+                    continue
+
+                selected_planning = next((pd for pd in planning_details if pd['planning_detail_id'] == selected_pd_id), None)
+
+                if not selected_planning:
+                    print(f"**Erreur :** Planification avec l'ID {selected_pd_id} non trouvée dans la liste.")
+                    continue
+
+                remarque_id_to_use = selected_planning['remarque_id']
+
+                if selected_planning['has_remark']:
+                    print(f"\nUne remarque existe déjà pour cette planification (ID: {selected_planning['remarque_id']}).")
+                    print(f"Contenu de la remarque existante : {selected_planning['existing_remarque_contenu']}")
+                    action_choice = input("Voulez-vous créer une facture pour cette remarque existante ? (oui/non) : ").strip().lower()
+                    if action_choice == 'oui':
+                        await ajouter_facture_remarque(pool, remarque_id_to_use)
+                    else:
+                        print("Opération annulée.")
+                else:
+                    print("\nAucune remarque n'existe pour cette planification. Créons-en une nouvelle.")
+                    contenu_remarque = input("Entrez le contenu de la remarque : ").strip()
+                    issue_remarque = input("Entrez le problème (laissez vide si aucun) : ").strip() or None
+                    action_remarque = input("Entrez l'action prise (laissez vide si aucune) : ").strip() or None
+
+                    new_remarque_id = await creer_remarque(pool, selected_pd_id, contenu_remarque, issue_remarque, action_remarque)
+
+                    if new_remarque_id:
+                        facture_choice = input("\nVoulez-vous créer une facture pour cette nouvelle remarque ? (oui/non) : ").strip().lower()
+                        if facture_choice == 'oui':
+                            await ajouter_facture_remarque(pool, new_remarque_id)
+                        else:
+                            print("Facture non créée pour cette remarque.")
+                    else:
+                        print("Impossible de créer la remarque. Opération annulée.")
+
+            elif main_choice == '2':
+                print("Quitter le programme.")
                 break
+            else:
+                print("Choix invalide. Veuillez réessayer.")
 
-            try:
-                remarque_id = int(remarque_id_input)
-            except ValueError:
-                print("**Erreur :** L'ID de la remarque doit être un nombre entier.")
-                continue
-
-            await ajouter_facture_remarque(pool, remarque_id)
-
-            continuer = input("\nVoulez-vous traiter une autre remarque ? (oui/non) : ").strip().lower()
-            if continuer != 'oui':
+            continuer_main = input("\nVoulez-vous retourner au menu principal ? (oui/non) : ").strip().lower()
+            if continuer_main != 'oui':
                 break
 
     except Exception as e:

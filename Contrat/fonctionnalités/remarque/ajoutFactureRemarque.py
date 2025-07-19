@@ -27,7 +27,8 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
     """
     Crée une facture automatique pour une remarque si le traitement associé est "Effectué"
     et si la remarque n'est pas déjà liée à une facture "Payée".
-    Permet à l'utilisateur de spécifier le montant, le mode de paiement et les détails associés.
+    Récupère le montant du prix standard du type de traitement associé.
+    Permet à l'utilisateur de spécifier le mode de paiement et les détails associés.
     """
     try:
         async with pool.acquire() as conn:
@@ -70,14 +71,16 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                     # Pour cet exemple, nous allons toujours créer une nouvelle facture si l'ancienne n'est pas payée.
                     # Une logique plus complexe pourrait demander à l'utilisateur de mettre à jour l'ancienne.
 
-                # 2. Récupérer les informations nécessaires pour la facture (axe, date_planification)
+                # 2. Récupérer les informations nécessaires pour la facture (axe, date_planification, montant)
                 await cur.execute("""
                     SELECT
                         cl.axe,
-                        pd.date_planification
+                        pd.date_planification,
+                        tt.prix_standard AS montant_standard -- Récupère le prix standard du type de traitement
                     FROM PlanningDetails pd
                     JOIN Planning p ON pd.planning_id = p.planning_id
                     JOIN Traitement t ON p.traitement_id = t.traitement_id
+                    JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
                     JOIN Contrat co ON t.contrat_id = co.contrat_id
                     JOIN Client cl ON co.client_id = cl.client_id
                     WHERE pd.planning_detail_id = %s
@@ -85,25 +88,16 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                 facture_details_from_planning = await cur.fetchone()
 
                 if not facture_details_from_planning:
-                    print(f"**Erreur:** Informations de contrat/planning non trouvées pour planning_detail_id {planning_detail_id}. Impossible de créer la facture.")
+                    print(f"**Erreur:** Informations de contrat/planning ou de prix non trouvées pour planning_detail_id {planning_detail_id}. Impossible de créer la facture.")
                     return
 
                 axe = facture_details_from_planning['axe']
                 date_traitement = facture_details_from_planning['date_planification'] # C'est la date de planification, utilisée comme date de traitement/facturation
+                montant = facture_details_from_planning['montant_standard'] # Montant récupéré automatiquement
 
-                # 3. Demander le montant de la facture
-                montant = None
-                while montant is None:
-                    try:
-                        montant_input = input("Entrez le montant de la facture (ex: 150000): ").strip()
-                        montant = float(montant_input)
-                        if montant <= 0:
-                            print("Le montant doit être un nombre positif.")
-                            montant = None
-                    except ValueError:
-                        print("Montant invalide. Veuillez entrer un nombre.")
+                print(f"Montant de la facture déterminé : {montant}")
 
-                # 4. Demander le mode de paiement et les détails associés
+                # 3. Demander le mode de paiement et les détails associés
                 mode_paiement = None
                 etablissement_payeur = None
                 numero_cheque = None
@@ -187,7 +181,7 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                     date_paiement = None
                     etat_facture = 'Non payé' # Assuming 'Non payé' is the correct enum value for unpaid
 
-                # 5. Ajouter la nouvelle facture dans la base de données
+                # 4. Ajouter la nouvelle facture dans la base de données
                 await cur.execute("""
                     INSERT INTO Facture (planning_detail_id, reference_facture, montant, mode, etablissemnt_payeur, numero_cheque, date_paiement, date_traitement, etat, axe)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -211,7 +205,7 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
 
                 print(f"Facture ID {new_facture_id} ajoutée avec succès pour PlanningDetails ID {planning_detail_id}.")
 
-                # 6. Mettre à jour la remarque avec le nouveau facture_id
+                # 5. Mettre à jour la remarque avec le nouveau facture_id
                 await cur.execute("""
                     UPDATE Remarque SET facture_id = %s WHERE remarque_id = %s
                 """, (new_facture_id, remarque_id))

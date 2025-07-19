@@ -67,8 +67,7 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                     return
                 elif existing_facture_id and facture_etat != 'Payé':
                     print(f"**Information:** La remarque {remarque_id} est déjà associée à une facture (ID: {existing_facture_id}) qui est '{facture_etat}'. Vous pouvez choisir de créer une nouvelle facture ou de laisser l'ancienne en l'état.")
-                    # Pour cet exemple, nous allons toujours créer une nouvelle facture si l'ancienne n'est pas payée.
-                    # Une logique plus complexe pourrait demander à l'utilisateur de mettre à jour l'ancienne.
+
 
                 # 2. Récupérer les informations nécessaires pour la facture (axe, date_planification)
                 await cur.execute("""
@@ -114,40 +113,77 @@ async def ajouter_facture_remarque(pool, remarque_id: int):
                 print("2. Virement")
                 print("3. Chèque")
                 print("4. Mobile Money")
-                print("5. Non payé / À venir (par défaut)")
+                print("5. Non payé / À venir")
                 mode_choice = input("Entrez votre choix (1-5): ").strip()
 
                 if mode_choice == '1':
                     mode_paiement = 'Espèce'
                     etat_facture = 'Payé'
-                elif mode_choice == '2':
-                    mode_paiement = 'Virement'
-                    etat_facture = 'Payé'
-                elif mode_choice == '3':
-                    mode_paiement = 'Chèque'
-                    etablissement_payeur = input("Entrez l'établissement payeur (ex: BNI, BOA): ").strip()
-                    numero_cheque = input("Entrez le numéro du chèque: ").strip()
-                    etat_facture = 'Payé'
-                elif mode_choice == '4':
-                    mode_paiement = 'Mobile Money'
-                    etat_facture = 'Payé'
-                else: # Default to 'Non payé' or 'À venir'
-                    mode_paiement = None # Explicitly set to None for 'Non payé' enum
-                    etat_facture = 'Non payé' # Or 'À venir' depending on your exact ENUM definition for non-paid
-
-                if etat_facture == 'Payé':
+                    print("\n--- Détails de Paiement (Espèce) ---")
                     while True:
                         date_paiement_str = input("Entrez la date de paiement (AAAA-MM-JJ, laissez vide pour la date de traitement): ").strip()
                         if not date_paiement_str:
-                            date_paiement = date_traitement # Use planning date as payment date if not provided
+                            date_paiement = date_traitement
                             break
                         try:
                             date_paiement = datetime.strptime(date_paiement_str, '%Y-%m-%d').date()
                             break
                         except ValueError:
                             print("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.")
-                else:
-                    date_paiement = None # No payment date if not paid
+
+                elif mode_choice == '2':
+                    mode_paiement = 'Virement'
+                    etat_facture = 'Payé'
+                    print("\n--- Détails de Paiement (Virement) ---")
+                    while True:
+                        date_paiement_str = input("Entrez la date de paiement (AAAA-MM-JJ, laissez vide pour la date de traitement): ").strip()
+                        if not date_paiement_str:
+                            date_paiement = date_traitement
+                            break
+                        try:
+                            date_paiement = datetime.strptime(date_paiement_str, '%Y-%m-%d').date()
+                            break
+                        except ValueError:
+                            print("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.")
+
+                elif mode_choice == '3':
+                    mode_paiement = 'Chèque'
+                    etat_facture = 'Payé'
+                    print("\n--- Détails de Paiement (Chèque) ---")
+                    etablissement_payeur = input("Entrez l'établissement payeur (ex: BNI, BOA): ").strip()
+                    numero_cheque = input("Entrez le numéro du chèque: ").strip()
+                    while True:
+                        date_paiement_str = input("Entrez la date de paiement (AAAA-MM-JJ, laissez vide pour la date de traitement): ").strip()
+                        if not date_paiement_str:
+                            date_paiement = date_traitement
+                            break
+                        try:
+                            date_paiement = datetime.strptime(date_paiement_str, '%Y-%m-%d').date()
+                            break
+                        except ValueError:
+                            print("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.")
+
+                elif mode_choice == '4':
+                    mode_paiement = 'Mobile Money'
+                    etat_facture = 'Payé'
+                    print("\n--- Détails de Paiement (Mobile Money) ---")
+                    while True:
+                        date_paiement_str = input("Entrez la date de paiement (AAAA-MM-JJ, laissez vide pour la date de traitement): ").strip()
+                        if not date_paiement_str:
+                            date_paiement = date_traitement
+                            break
+                        try:
+                            date_paiement = datetime.strptime(date_paiement_str, '%Y-%m-%d').date()
+                            break
+                        except ValueError:
+                            print("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.")
+
+                else: # Default to 'Non payé' or 'À venir'
+                    mode_paiement = None
+                    etablissement_payeur = None
+                    numero_cheque = None
+                    date_paiement = None
+                    etat_facture = 'Non payé' # Assuming 'Non payé' is the correct enum value for unpaid
 
                 # 5. Ajouter la nouvelle facture dans la base de données
                 await cur.execute("""

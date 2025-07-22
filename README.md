@@ -1,6 +1,19 @@
+<h1 align="center">Planificator (DB)</h1>
+
+<p align="center">
+  <strong>Script pour la base de données du projet Planificator.</strong>
+</p>
+
+<p align="center">
+  <!-- Badges -->
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/github/last-commit/josoavj/dbPlanificator" alt="Last Commit">
+  <img src="https://img.shields.io/github/stars/josoavj/dbPlanificator?style=social" alt="GitHub Stars">
+</p>
+ 
+
 # Database for Planificator
 
-- **Description:** Script pour les bases de données du projet Planificator
 - **DB:** mysql
 - **Langage pour les scripts:** Python
 - **Extension utilisés:** aiomysql, mysqlconnector, bycript, re

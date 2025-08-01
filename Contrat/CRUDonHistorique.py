@@ -1,10 +1,20 @@
-import asyncio
 import aiomysql
-from datetime import date, datetime, timedelta
+from datetime import date
 
 
-async def create_historique(pool, traitement_id, contenu, date_traitement=None):
-    """Crée un historique pour un traitement donné."""
+async def create_historique(pool, traitement_id: int, contenu: str, date_traitement: date | None = None) -> int | None:
+    """
+    Crée un historique pour un traitement donné.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        traitement_id (int): L'ID du traitement associé.
+        contenu (str): Le contenu de l'historique.
+        date_traitement (date | None): La date du traitement. Par défaut, utilise la date d'aujourd'hui.
+
+    Returns:
+        int | None: L'ID de l'historique nouvellement créé, ou None en cas d'échec.
+    """
     conn = None
     try:
         conn = await pool.acquire()
@@ -25,14 +35,23 @@ async def create_historique(pool, traitement_id, contenu, date_traitement=None):
             pool.release(conn)
 
 
-async def read_historique(pool, historique_id):
-    """Lit un historique à partir de son ID."""
+async def read_historique(pool, historique_id: int) -> dict | None:
+    """
+    Lit un historique à partir de son ID.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        historique_id (int): L'ID de l'historique à lire.
+
+    Returns:
+        dict | None: Un dictionnaire contenant les informations de l'historique, ou None si non trouvé ou en cas d'erreur.
+    """
     conn = None
     try:
         conn = await pool.acquire()
-        async with conn.cursor(aiomysql.DictCursor) as cur:  # Utilisation de DictCursor
+        async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("SELECT * FROM Historique WHERE historique_id = %s", (historique_id,))
-            return await cur.fetchone()  # Retourne un dictionnaire ou None
+            return await cur.fetchone()
     except Exception as e:
         print(f"Erreur lors de la lecture de l'historique (ID: {historique_id}) : {e}")
         return None
@@ -41,8 +60,19 @@ async def read_historique(pool, historique_id):
             pool.release(conn)
 
 
-async def update_historique(pool, historique_id, contenu, date_traitement):
-    """Modifie un historique existant."""
+async def update_historique(pool, historique_id: int, contenu: str, date_traitement: date) -> int:
+    """
+    Modifie un historique existant.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        historique_id (int): L'ID de l'historique à modifier.
+        contenu (str): Le nouveau contenu de l'historique.
+        date_traitement (date): La nouvelle date de traitement.
+
+    Returns:
+        int: Le nombre de lignes affectées (1 si succès, 0 sinon).
+    """
     conn = None
     try:
         conn = await pool.acquire()
@@ -52,7 +82,7 @@ async def update_historique(pool, historique_id, contenu, date_traitement):
                 (contenu, date_traitement, historique_id)
             )
             await conn.commit()
-            return cur.rowcount  # Retourne le nombre de lignes affectées (1 si succès, 0 sinon)
+            return cur.rowcount
     except Exception as e:
         print(f"Erreur lors de la modification de l'historique (ID: {historique_id}) : {e}")
         return 0
@@ -61,15 +91,24 @@ async def update_historique(pool, historique_id, contenu, date_traitement):
             pool.release(conn)
 
 
-async def delete_historique(pool, historique_id):
-    """Supprime un historique à partir de son ID."""
+async def delete_historique(pool, historique_id: int) -> int:
+    """
+    Supprime un historique à partir de son ID.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        historique_id (int): L'ID de l'historique à supprimer.
+
+    Returns:
+        int: Le nombre de lignes supprimées (1 si succès, 0 sinon).
+    """
     conn = None
     try:
         conn = await pool.acquire()
         async with conn.cursor() as cur:
             await cur.execute("DELETE FROM Historique WHERE historique_id = %s", (historique_id,))
             await conn.commit()
-            return cur.rowcount  # Retourne le nombre de lignes supprimées
+            return cur.rowcount
     except Exception as e:
         print(f"Erreur lors de la suppression de l'historique (ID: {historique_id}) : {e}")
         return 0
@@ -78,15 +117,24 @@ async def delete_historique(pool, historique_id):
             pool.release(conn)
 
 
-async def get_historique_for_traitement(pool, traitement_id):
-    """Récupère l'historique d'un traitement spécifique."""
+async def get_historique_for_traitement(pool, traitement_id: int) -> list[dict]:
+    """
+    Récupère l'historique d'un traitement spécifique.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        traitement_id (int): L'ID du traitement.
+
+    Returns:
+        list[dict]: Une liste de dictionnaires, chaque dictionnaire représentant un historique.
+    """
     conn = None
     try:
         conn = await pool.acquire()
-        async with conn.cursor(aiomysql.DictCursor) as cur:  # Utilisation de DictCursor
+        async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("SELECT * FROM Historique WHERE traitement_id = %s ORDER BY date_traitement DESC",
                               (traitement_id,))
-            return await cur.fetchall()  # Retourne une liste de dictionnaires
+            return await cur.fetchall()
     except Exception as e:
         print(f"Erreur lors de la récupération de l'historique pour le traitement ID {traitement_id} : {e}")
         return []
@@ -95,22 +143,28 @@ async def get_historique_for_traitement(pool, traitement_id):
             pool.release(conn)
 
 
-async def create_historique_for_planning(pool, planning_id, contenu_specifique=None):
+async def create_historique_for_planning(pool, planning_id: int, contenu_specifique: str | None = None) -> bool:
     """
     Crée automatiquement un historique pour le traitement associé à un planning donné.
     Le contenu peut être spécifié ou généré par défaut.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        planning_id (int): L'ID du planning.
+        contenu_specifique (str | None): Le contenu à insérer. Si None, un contenu par défaut est généré.
+
+    Returns:
+        bool: True si l'historique a été créé avec succès, False sinon.
     """
     conn = None
     try:
         conn = await pool.acquire()
-        async with conn.cursor(aiomysql.DictCursor) as cur:  # Utilisation de DictCursor
-            # Récupérer l'ID du traitement associé à ce planning
+        async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("SELECT traitement_id FROM Planning WHERE planning_id = %s", (planning_id,))
             result = await cur.fetchone()
             if result:
                 traitement_id = result['traitement_id']
 
-                # Définir le contenu par défaut si non spécifié
                 if contenu_specifique is None:
                     contenu = f"Historique généré automatiquement pour la planification du traitement {traitement_id}."
                 else:
@@ -130,19 +184,25 @@ async def create_historique_for_planning(pool, planning_id, contenu_specifique=N
             pool.release(conn)
 
 
-async def afficher_historique_client(pool, client_id):
-    """Affiche l'historique de tous les traitements d'un client."""
+async def afficher_historique_client(pool, client_id: int) -> None:
+    """
+    Affiche l'historique de tous les traitements d'un client.
+
+    Args:
+        pool: Le pool de connexions aiomysql.
+        client_id (int): L'ID du client.
+    """
     conn = None
     try:
         conn = await pool.acquire()
-        async with conn.cursor(aiomysql.DictCursor) as cur:  # Utilisation de DictCursor
+        async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("""
                               SELECT h.historique_id,
                                      h.traitement_id,
                                      h.contenu,
                                      h.date_traitement,
-                                     t.id_type_traitement,                     -- ID du type de traitement pour plus de détails
-                                     tt.typeTraitement AS nom_type_traitement, -- Nom du type de traitement
+                                     t.id_type_traitement,
+                                     tt.typeTraitement AS nom_type_traitement,
                                      c.contrat_id,
                                      cl.nom            AS nom_client,
                                      cl.prenom         AS prenom_client
@@ -150,7 +210,7 @@ async def afficher_historique_client(pool, client_id):
                                        JOIN Traitement t ON h.traitement_id = t.traitement_id
                                        JOIN Contrat c ON t.contrat_id = c.contrat_id
                                        JOIN Client cl ON c.client_id = cl.client_id
-                                       JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement -- Jointure pour le nom du type de traitement
+                                       JOIN TypeTraitement tt ON t.id_type_traitement = tt.id_type_traitement
                               WHERE c.client_id = %s
                               ORDER BY h.date_traitement DESC
                               """, (client_id,))
